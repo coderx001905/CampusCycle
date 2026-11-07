@@ -1,0 +1,34 @@
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "127.0.0.1:8000:8000"
+    environment:
+      CC_APP_NAME: CampusCycle API
+      CC_ENVIRONMENT: ${CC_ENVIRONMENT:-development}
+      CC_LOG_LEVEL: INFO
+      CC_API_V1_PREFIX: /api/v1
+      CC_CORS_ORIGINS: '["http://localhost:5173","http://127.0.0.1:5173"]'
+      CC_DATABASE_URL: sqlite:////data/campuscycle.db
+      CC_JWT_SECRET_KEY: ${CC_JWT_SECRET_KEY:-local-compose-development-only-change-me}
+      CC_JWT_ALGORITHM: HS256
+      CC_JWT_ISSUER: campuscycle-api
+      CC_JWT_AUDIENCE: campuscycle-client
+      CC_ACCESS_TOKEN_EXPIRE_MINUTES: 15
+    volumes:
+      - campuscycle_data:/data
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/v1/health', timeout=3)"
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  campuscycle_data:
