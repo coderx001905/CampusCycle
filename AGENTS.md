@@ -15,8 +15,9 @@ Use the `project-blueprint/` directory as the source of truth for approved techn
 - Phase 2 — System Design, Database Design and API Planning: **COMPLETED**.
 - Phase 3 — Backend Foundation: **COMPLETED**.
 - Phase 4 — Database Development: **COMPLETED and independently approved**.
+- Phase 5 - Authentication and Authorization: **COMPLETED**.
 
-Phase 1 uses demonstration data and local React state. Phase 4 provides the approved database schema and migrations, but real authentication endpoints, persisted business workflows, business APIs, and complete frontend–backend integration are not yet implemented.
+Phase 1 uses demonstration data and local React state. Phase 4 provides the approved database schema and migrations. Phase 5 implements real authentication, college onboarding, account management, and authorization; persisted resource/request/transfer workflows and complete frontend-backend integration are not yet implemented.
 
 Do not describe the entire application as complete.
 
@@ -142,7 +143,7 @@ Phase names and numbering must match it exactly.
 | 2 | System Design, Database Design and API Planning | COMPLETED |
 | 3 | Backend Foundation | COMPLETED |
 | 4 | Database Development | COMPLETED and independently approved |
-| 5 | Authentication and Authorization | UPCOMING / NEXT |
+| 5 | Authentication and Authorization | COMPLETED |
 | 6 | Resource Management | UPCOMING |
 | 7 | Requests, Approvals and Reservations | UPCOMING |
 | 8 | Logistics and Transfer Tracking | UPCOMING |
@@ -310,7 +311,7 @@ Establish a clean, maintainable, and properly configured FastAPI backend.
 
 - Do not implement database models before Phase 4.
 - Do not create database migrations before Phase 4.
-- Do not implement full authentication before Phase 5.
+- Phase 5 authentication and authorization are implemented; do not add features beyond its approved contract without approval.
 - Do not implement resource or request business workflows prematurely.
 - Do not implement Docker deployment before Phase 11.
 

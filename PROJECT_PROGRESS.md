@@ -7,6 +7,7 @@
 - **Phase 2 – System Design, Database Design and API Planning: COMPLETED**
 - **Phase 3 – Backend Foundation: COMPLETED**
 - **Phase 4 – Database Development: COMPLETED and independently approved**
+- **Phase 5 - Authentication and Authorization: COMPLETED**
 
 ### Current Completion Boundary
 
@@ -14,7 +15,7 @@ Phase 1 is complete as a frontend prototype. It uses demonstration data and loca
 
 Phase 2 is complete as a design deliverable. System architecture, database design, detailed schema, API specifications and design decisions have been reviewed and approved.
 
-The backend foundation and SQLite connection/session infrastructure are implemented. Liveness and database readiness are separate checks. Phase 4 implements the approved seven SQLAlchemy models, constraints, indexes, and Alembic migrations. The initial Phase 4 migrations were applied to the existing Docker database after a read-only check confirmed it had no schema objects. The targeted exchange-request correction was tested locally and independently approved; that correction did not access or modify the persistent Docker database. Authentication endpoints, business APIs, and complete frontend-backend integration are not implemented.
+The backend foundation and SQLite connection/session infrastructure are implemented. Liveness and database readiness are separate checks. Phase 4 implements the approved seven SQLAlchemy models, constraints, indexes, and Alembic migrations. The initial Phase 4 migrations were applied to the existing Docker database after a read-only check confirmed it had no schema objects. The targeted exchange-request correction was tested locally and independently approved; that correction did not access or modify the persistent Docker database. Phase 5 now implements authentication, college onboarding, account management, and authorization on the existing schema. Resource/request/transfer business APIs and complete frontend-backend integration remain unimplemented.
 
 ---
 
@@ -313,30 +314,41 @@ Implement the approved database design.
 
 ---
 
-## Phase 5 – Authentication and Authorization: UPCOMING
+## Phase 5 - Authentication and Authorization: COMPLETED
 
 ### Objective
 
-Implement secure authentication and role-based access control.
+Implement secure authentication and role-based access control using the approved seven-table schema.
 
-### Planned Tasks
+### Completed Tasks
 
-- [ ] Implement college registration.
-- [ ] Implement user registration.
-- [ ] Implement password hashing.
-- [ ] Implement login.
-- [ ] Implement JWT access tokens.
-- [ ] Implement refresh token management.
-- [ ] Implement refresh token rotation.
-- [ ] Implement logout and refresh token revocation.
-- [ ] Implement authentication dependencies.
-- [ ] Implement Platform Admin permissions.
-- [ ] Implement College Representative permissions.
-- [ ] Implement college-level data isolation.
-- [ ] Implement college verification restrictions.
-- [ ] Test authentication and authorization.
+- [x] Implement atomic college and initial representative registration; new colleges begin pending.
+- [x] Hash and verify passwords with Argon2id and validate email/password input.
+- [x] Add one-time local Platform Admin provisioning with hidden password prompts and transaction-safe refusal after initial setup.
+- [x] Implement login and 15-minute HS256 access JWTs with issuer, audience, expiry, and required claims.
+- [x] Implement seven-day refresh JWT issuance, hashed-at-rest persistence, rotation lineage, logout revocation, and family reuse detection.
+- [x] Protect refresh/logout with signed double-submit CSRF cookies, Origin validation, and configured cookie security.
+- [x] Implement current-user, college, and representative-account endpoints from the approved API contract.
+- [x] Add persisted-user authentication dependencies, role checks, college scoping, and reusable verified-college eligibility enforcement.
+- [x] Enforce the last-active-representative rule under a SQLite write lock.
+- [x] Add isolated authentication, authorization, security, provisioning, and concurrency regression tests.
+- [x] Document local setup, first-admin provisioning, endpoint contracts, cookie/CSRF flow, and production configuration in backend/README.md.
+- [x] Preserve the seven approved tables and three existing Alembic revisions; Phase 5 required no schema migration.
 
----
+### Phase 5 Completion Boundary
+
+Authentication, onboarding, account management, and authorization are implemented and verified. No resource, request, reservation, transfer, analytics, or frontend-integration workflows were added. Registration does not issue an authenticated session; the representative signs in separately. Editable college fields are limited to existing identity/contact columns because the approved API contract does not enumerate individual update fields. No database audit-history table was added; verification changes update the existing timestamp and emit an application log entry.
+
+### Phase 5 Verification Record
+
+- Complete backend suite: 69 passed, 0 failed; one existing Starlette deprecation warning remains for its TestClient using httpx.
+- Phase 5 focused tests cover Argon2id hashing, safe registration, duplicate/injected fields, access authentication, refresh rotation and family reuse, expired-token reuse, concurrency, rollback, CSRF and Origin checks, logout, inactive/stale users, one-time provisioning, role permissions, college isolation, verified-college eligibility, and production cookie settings.
+- `pwdlib[argon2]` and `email-validator` are installed in the root Python 3.12 virtual environment and constrained in `backend/requirements.txt`.
+- An isolated temporary SQLite database upgraded successfully; `alembic current` reported `c81f23a7d940 (head)`. SQLite emitted its existing warning that it cannot reflect the expression-based email index. All three existing migrations are preserved; no persistent local or Docker database was migrated during Phase 5.
+- Local Admin command: `python -m app.cli provision-admin` from `D:\CampusCycle\backend`, after `alembic upgrade head` on the intended local development database.
+- No Docker or Docker Compose commands were run. The persistent Docker database and campuscycle_data volume were not accessed or modified.
+- No models, tables, migrations, or frontend files were created or changed for Phase 5.
+- Production cookie settings require Secure cookies and independent strong JWT/CSRF secrets. Frontend and backend should use localhost in local development; localhost and 127.0.0.1 do not share cookies.
 
 ## Phase 6 – Resource Management: UPCOMING
 
@@ -549,4 +561,4 @@ Verify and document the complete CampusCycle V1 application.
 
 ## Current Next Action
 
-**Begin Phase 5 – Authentication and Authorization** after the approved Phase 4 handoff. No authentication endpoints or business workflows were implemented in Phase 4.
+**Begin Phase 6 - Resource Management** after the completed Phase 5 handoff. Phase 6 must use persisted-user authorization and college eligibility dependencies; request and transfer workflows remain in their designated later phases.

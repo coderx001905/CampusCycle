@@ -13,10 +13,11 @@ def create_access_token(
     college_id: int | None,
     settings: Settings,
 ) -> str:
-    """Create a signed V1 access token; authentication endpoints are not included."""
+    """Create a signed V1 access token with the approved identity claims."""
     now = datetime.now(timezone.utc)
     claims: dict[str, Any] = {
         "sub": subject,
+        "token_type": "access",
         "role": role,
         "college_id": college_id,
         "iss": settings.jwt_issuer,
