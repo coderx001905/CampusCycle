@@ -1,0 +1,265 @@
+
+@import "tailwindcss";
+
+/* =========================================
+   CAMPUSCYCLE DESIGN SYSTEM
+   Primitive colour palette
+========================================= */
+
+:root {
+  color-scheme: light;
+
+  /* Neutral ramp */
+  --neutral-50: #F7F9FA;
+  --neutral-100: #ECEFF2;
+  --neutral-200: #D9DFE3;
+  --neutral-300: #C0C8D0;
+  --neutral-400: #A1ACB7;
+  --neutral-500: #83919E;
+  --neutral-600: #697682;
+  --neutral-700: #525C66;
+  --neutral-800: #384148;
+  --neutral-900: #21272C;
+  --neutral-950: #13171A;
+
+  /* Campus blue ramp */
+  --blue-50: #F3F9FF;
+  --blue-100: #E1F1FF;
+  --blue-200: #C2E2FF;
+  --blue-300: #95CEFF;
+  --blue-400: #50B3FF;
+  --blue-500: #0096EB;
+  --blue-600: #007AC1;
+  --blue-700: #005F98;
+  --blue-800: #00436D;
+  --blue-900: #002945;
+  --blue-950: #00182B;
+
+  /* Botanical green ramp */
+  --green-50: #EDFDF3;
+  --green-100: #DBF6E6;
+  --green-200: #BBECD0;
+  --green-300: #8CDCB1;
+  --green-400: #47C58C;
+  --green-500: #00AA6F;
+  --green-600: #008A5A;
+  --green-700: #006C45;
+  --green-800: #004D30;
+  --green-900: #002F1C;
+  --green-950: #001C0F;
+
+  /* Amber status ramp */
+  --amber-50: #FFF7EB;
+  --amber-100: #FBECD4;
+  --amber-200: #F4DAAF;
+  --amber-300: #E9C07B;
+  --amber-400: #D99F2B;
+  --amber-500: #BA8400;
+  --amber-600: #986B00;
+  --amber-700: #775300;
+  --amber-800: #553A00;
+  --amber-900: #352300;
+  --amber-950: #201300;
+
+  /* Red status ramp */
+  --red-50: #FFF6F5;
+  --red-100: #FFE9E6;
+  --red-200: #FFD1CD;
+  --red-300: #FFB0A8;
+  --red-400: #FF7E77;
+  --red-500: #F94144;
+  --red-600: #D3222D;
+  --red-700: #A9131F;
+  --red-800: #7C0110;
+  --red-900: #4F0006;
+  --red-950: #310203;
+
+  /* =========================================
+     SEMANTIC TOKENS — LIGHT THEME
+  ========================================= */
+
+  /* Backgrounds */
+  --color-bg-canvas: var(--neutral-50);
+  --color-bg-surface: #FFFFFF;
+  --color-bg-elevated: #FFFFFF;
+  --color-bg-subtle: var(--neutral-100);
+
+  /* Text */
+  --color-text-primary: var(--neutral-900);
+  --color-text-secondary: var(--neutral-700);
+  --color-text-muted: var(--neutral-600);
+  --color-text-inverse: #FFFFFF;
+
+  /* Borders */
+  --color-border-default: var(--neutral-200);
+  --color-border-strong: var(--neutral-300);
+
+  /* Brand */
+  --color-accent-solid: var(--blue-700);
+  --color-accent-hover: var(--blue-800);
+  --color-accent-soft: var(--blue-50);
+  --color-accent-text: var(--blue-800);
+
+  /* Community and availability */
+  --color-success-solid: var(--green-600);
+  --color-success-bg: var(--green-50);
+  --color-success-text: var(--green-800);
+
+  /* Pending */
+  --color-warning-solid: var(--amber-600);
+  --color-warning-bg: var(--amber-50);
+  --color-warning-text: var(--amber-800);
+
+  /* Errors and rejection */
+  --color-danger-solid: var(--red-600);
+  --color-danger-bg: var(--red-50);
+  --color-danger-text: var(--red-800);
+
+  /* Focus */
+  --color-focus-ring: var(--blue-600);
+}
+
+/* =========================================
+   DARK THEME
+   Activated using .dark on the HTML element
+========================================= */
+
+.dark {
+  color-scheme: dark;
+
+  /* Backgrounds */
+  --color-bg-canvas: var(--neutral-950);
+  --color-bg-surface: var(--neutral-900);
+  --color-bg-elevated: var(--neutral-800);
+  --color-bg-subtle: var(--neutral-900);
+
+  /* Text */
+  --color-text-primary: var(--neutral-50);
+  --color-text-secondary: var(--neutral-300);
+  --color-text-muted: var(--neutral-400);
+  --color-text-inverse: var(--neutral-950);
+
+  /* Borders */
+  --color-border-default: var(--neutral-800);
+  --color-border-strong: var(--neutral-700);
+
+  /* Brand */
+  --color-accent-solid: var(--blue-400);
+  --color-accent-hover: var(--blue-300);
+  --color-accent-soft: var(--blue-950);
+  --color-accent-text: var(--blue-200);
+
+  /* Community and availability */
+  --color-success-solid: var(--green-400);
+  --color-success-bg: var(--green-950);
+  --color-success-text: var(--green-200);
+
+  /* Pending */
+  --color-warning-solid: var(--amber-400);
+  --color-warning-bg: var(--amber-950);
+  --color-warning-text: var(--amber-200);
+
+  /* Errors and rejection */
+  --color-danger-solid: var(--red-400);
+  --color-danger-bg: var(--red-950);
+  --color-danger-text: var(--red-200);
+
+  /* Focus */
+  --color-focus-ring: var(--blue-300);
+}
+
+/* =========================================
+   TAILWIND CSS v4 THEME BRIDGE
+========================================= */
+
+@theme inline {
+  --color-ui-canvas: var(--color-bg-canvas);
+  --color-ui-surface: var(--color-bg-surface);
+  --color-ui-elevated: var(--color-bg-elevated);
+  --color-ui-subtle: var(--color-bg-subtle);
+
+  --color-ui-text-primary: var(--color-text-primary);
+  --color-ui-text-secondary: var(--color-text-secondary);
+  --color-ui-text-muted: var(--color-text-muted);
+
+  --color-ui-border: var(--color-border-default);
+  --color-ui-border-strong: var(--color-border-strong);
+
+  --color-ui-accent: var(--color-accent-solid);
+  --color-ui-accent-hover: var(--color-accent-hover);
+  --color-ui-accent-soft: var(--color-accent-soft);
+
+  --color-ui-success: var(--color-success-solid);
+  --color-ui-success-bg: var(--color-success-bg);
+  --color-ui-success-text: var(--color-success-text);
+
+  --color-ui-warning: var(--color-warning-solid);
+  --color-ui-warning-bg: var(--color-warning-bg);
+  --color-ui-warning-text: var(--color-warning-text);
+
+  --color-ui-danger: var(--color-danger-solid);
+  --color-ui-danger-bg: var(--color-danger-bg);
+  --color-ui-danger-text: var(--color-danger-text);
+
+  --color-ui-focus: var(--color-focus-ring);
+
+  --font-sans: "DM Sans", sans-serif;
+  --font-display: "Space Grotesk", sans-serif;
+}
+/* =========================================
+   GLOBAL FOUNDATION
+========================================= */
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  min-width: 320px;
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+  background: var(--color-bg-canvas);
+  color: var(--color-text-primary);
+  font-family: "DM Sans", sans-serif;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 3px;
+}
+
+::selection {
+  background: var(--color-accent-soft);
+  color: var(--color-text-primary);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
