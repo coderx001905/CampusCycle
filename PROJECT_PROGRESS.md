@@ -5,7 +5,8 @@
 - **Phase 0 – Foundation and Environment Setup: COMPLETED**
 - **Phase 1 – Frontend Development: COMPLETED** (frontend prototype)
 - **Phase 2 – System Design, Database Design and API Planning: COMPLETED**
-- **Phase 3 – Backend Foundation: UPCOMING / NEXT**
+- **Phase 3 – Backend Foundation: COMPLETED**
+- **Phase 4 – Database Development: COMPLETED and independently approved**
 
 ### Current Completion Boundary
 
@@ -13,7 +14,7 @@ Phase 1 is complete as a frontend prototype. It uses demonstration data and loca
 
 Phase 2 is complete as a design deliverable. System architecture, database design, detailed schema, API specifications and design decisions have been reviewed and approved.
 
-The backend, persistent database, authentication, actual APIs and complete frontend-backend integration have not yet been implemented.
+The backend foundation and SQLite connection/session infrastructure are implemented. Liveness and database readiness are separate checks. Phase 4 implements the approved seven SQLAlchemy models, constraints, indexes, and Alembic migrations. The initial Phase 4 migrations were applied to the existing Docker database after a read-only check confirmed it had no schema objects. The targeted exchange-request correction was tested locally and independently approved; that correction did not access or modify the persistent Docker database. Authentication endpoints, business APIs, and complete frontend-backend integration are not implemented.
 
 ---
 
@@ -212,7 +213,7 @@ Documents:
 
 ---
 
-## Phase 3 – Backend Foundation: UPCOMING / NEXT
+## Phase 3 – Backend Foundation: COMPLETED
 
 ### Objective
 
@@ -220,23 +221,55 @@ Establish a clean and maintainable FastAPI backend foundation.
 
 ### Planned Tasks
 
-- [ ] Create backend project structure.
-- [ ] Configure Python virtual environment and dependencies.
-- [ ] Install and configure FastAPI and Uvicorn.
-- [ ] Configure environment variables.
-- [ ] Configure application settings.
-- [ ] Create the FastAPI application entry point.
-- [ ] Configure CORS.
-- [ ] Implement a basic health-check endpoint.
-- [ ] Configure centralized error handling.
-- [ ] Configure logging.
-- [ ] Verify backend startup.
-- [ ] Verify the Swagger/OpenAPI documentation.
-- [ ] Update backend setup documentation.
+- [x] Create modular backend project structure.
+- [x] Reuse the existing root Python 3.12 virtual environment for backend dependencies.
+- [x] Add backend runtime and development dependency requirements.
+- [x] Install FastAPI, Uvicorn, SQLAlchemy, Pydantic Settings, PyJWT, and test dependencies.
+- [x] Add environment-based settings and a non-secret `.env.example`.
+- [x] Create the FastAPI application entry point and `/api/v1` router.
+- [x] Add `/api/v1/health` liveness and `/api/v1/ready` database readiness endpoints.
+- [x] Configure CORS for the existing Vite development origins.
+- [x] Add standardized API error responses and basic application logging.
+- [x] Add SQLAlchemy SQLite engine configuration and reusable request-scoped session management; no models or tables created.
+- [x] Dispose the SQLAlchemy engine during FastAPI lifespan shutdown.
+- [x] Restrict JWT signing/verification to HS256 and validate configurable issuer and audience claims.
+- [x] Preserve the approved 15-minute access-token lifetime.
+- [x] Add JWT access-token signing and verification primitives; no authentication endpoints or refresh-token workflow implemented.
+- [x] Extend `.gitignore` for backend environments, Python caches, logs, and local database files.
+- [x] Run the backend container as UID/GID 10001 with write access to `/data`; retain the existing named SQLite volume.
+- [x] Add a backend Dockerfile and backend-only Compose development service at explicit request; the existing frontend configuration remains unchanged.
+- [x] Add backend tests for liveness/readiness, unavailable database behavior, engine disposal, CORS, error formatting, SQLite connectivity, settings, and JWT algorithm/issuer/audience validation.
+- [x] Verify backend startup, health endpoint, and generated OpenAPI document locally.
+- [x] Add backend setup documentation.
+- [x] Validate the Compose configuration, build the backend image, and start the service with Docker Compose.
+- [x] Verify the service health check, `/api/v1/health`, and frontend development CORS origin.
+- [x] Verify SQLite connectivity and database-file persistence in the named volume across a container restart.
+- [x] Inspect container logs; startup and request logs showed no errors.
+
+### Phase 3 Completion Boundary
+
+Phase 3 backend foundation and the requested backend Docker/Compose development scaffold are implemented and verified. The Compose service is backend-only; the existing frontend continues to run independently and was not modified. Full application deployment remains Phase 11. No business modules, authentication endpoints, SQLAlchemy models, database tables, or migrations have been implemented. Those remain in their designated later phases.
+
+### Phase 3 Verification Record
+
+- Docker Desktop 4.98.0; Docker Engine 29.9.2; Docker Compose v5.6.1.
+- `docker compose config`: passed with the existing `campuscycle_data` named volume.
+- Backend image build and Compose container recreation: passed; volume preserved.
+- Container status: `Up (healthy)` as UID/GID 10001; published only on `127.0.0.1:8000`.
+- Verified the non-root container can write to `/data`; the existing `/data/campuscycle.db` remains present.
+- `GET /api/v1/health`: HTTP 200 liveness response; `GET /api/v1/ready`: HTTP 200 readiness response.
+- Readiness returns HTTP 503 when its database query fails; liveness remains HTTP 200 (backend test).
+- FastAPI lifespan shutdown disposes the SQLAlchemy engine (backend test).
+- JWT algorithm is HS256 only; invalid algorithm, issuer, and audience are rejected (backend tests). Configured issuer/audience and 15-minute token lifetime were verified.
+- Vite development CORS preflight: HTTP 200 and `Access-Control-Allow-Origin: http://localhost:5173`.
+- SQLite `SELECT 1` and `PRAGMA foreign_keys`: passed. `/data/campuscycle.db` remained present after restarting the service; no tables were created.
+- Development dependencies were cleanly reinstalled from `requirements-dev.txt` with `httpx>=0.27,<1.0`; complete backend suite: 16 passed with one Starlette deprecation warning for the requested HTTPX test client.
+- Production-mode configuration using the Compose development JWT fallback was rejected by settings validation.
+- Container logs contained application startup and successful health/CORS requests; no error entries observed.
 
 ---
 
-## Phase 4 – Database Development: UPCOMING
+## Phase 4 – Database Development: COMPLETED and independently approved
 
 ### Objective
 
@@ -244,17 +277,39 @@ Implement the approved database design.
 
 ### Planned Tasks
 
-- [ ] Configure SQLite database.
-- [ ] Configure SQLAlchemy.
-- [ ] Configure database engine and sessions.
-- [ ] Configure Alembic migrations.
-- [ ] Implement the seven approved database models.
-- [ ] Implement foreign key relationships.
-- [ ] Implement database constraints.
-- [ ] Implement indexes.
-- [ ] Create initial database migration.
-- [ ] Apply and verify migrations.
-- [ ] Test database relationships and constraints.
+- [x] Establish SQLite connectivity, SQLAlchemy engine, and reusable session infrastructure (completed in Phase 3).
+- [x] Verify SQLite file persistence in the Docker named volume (completed in Phase 3).
+- [x] Implement exactly the seven approved SQLAlchemy models and application tables in metadata.
+- [x] Configure Alembic using the existing environment-based database URL and model metadata.
+- [x] Implement explicit foreign-key relationships with RESTRICT deletion behavior.
+- [x] Implement approved database constraints and indexes, including case-insensitive user email uniqueness.
+- [x] Create the initial Alembic migration (`889848499f56`) and follow-up that removes undocumented status defaults (`f4a6d9c123ab`).
+- [x] Verify initial migration upgrade on an isolated empty SQLite database.
+- [x] Test model imports, relationships, constraints, UTC timestamp normalization, foreign-key enforcement, and restricted deletion.
+- [x] Inspect the existing Docker SQLite database read-only before migration; it contained no schema objects.
+- [x] Apply and verify both migrations in the existing Docker database.
+- [x] Build the updated backend Docker image and verify service health.
+- [x] Verify migrated schema, foreign-key enforcement, Alembic revision, and persistence across a container restart.
+- [x] Update backend database and migration documentation.
+
+**Phase 4 boundary:** The approved seven ORM models, database constraints/indexes, and Alembic migrations are implemented and independently reviewed and approved. The targeted exchange-request integrity correction is verified on isolated local SQLite databases. The correction was not applied to or verified against the persistent Docker database. No authentication endpoints, refresh-token operations, or business service workflows are included.
+
+### Phase 4 Verification Record
+
+- Alembic revisions `889848499f56` and `f4a6d9c123ab` create exactly the seven approved business tables and remove status defaults not documented in the approved schema; `alembic_version` is Alembic's migration bookkeeping table. Corrective revision `c81f23a7d940` (parent `f4a6d9c123ab`) tightens the exchange offer check constraint.
+- Model, relationship, constraint, timestamp, foreign-key, unique-index, and isolated migration tests passed as part of the complete backend suite: 40 passed, 0 failed.
+- Eight focused SQLite constraint regression cases passed, including exchange with a NULL offered quantity (rejected) and all donation/purchase offer-field combinations.
+- Corrective migration upgrade succeeded both from a fresh temporary database and from the previous head. The previous-head migration test preserved two request rows and existing college, user, resource, transfer, transfer-history, and refresh-token rows; it retained all seven tables, request columns, foreign keys, and indexes, with no foreign-key violations.
+- The existing Docker database and `campuscycle_data` volume were not accessed or changed during this targeted correction, as explicitly required. The most recent Docker verification recorded above predates revision `c81f23a7d940`; the corrective migration remains locally verified and can be applied during the designated Docker verification phase.
+- The existing 16 Phase 3 backend tests continue to pass.
+- One existing Starlette deprecation warning remains: its `TestClient` currently warns about use of the requested `httpx` dependency.
+- `docker compose config`, backend image build, container recreation, and both migrations passed. Compose retains the original `campuscycle_data` named volume.
+- The container runs as UID/GID 10001 and reports healthy. `/api/v1/health` and `/api/v1/ready` each returned HTTP 200.
+- The container database contains the seven approved tables plus `alembic_version`; `PRAGMA foreign_keys` returned 1, `PRAGMA foreign_key_check` returned no rows, and `SELECT 1` succeeded.
+- At the previous Docker verification, Alembic reported revision `f4a6d9c123ab (head)` after restart; that verification predates this local corrective revision. `alembic check` then found no new upgrade operations (with the expression-index reflection warning noted below).
+- Resource, request, and transfer status fields have no inferred database defaults; only defaults explicitly specified by the approved schema are applied.
+- SQLite/Alembic cannot reflect the expression-based `lower(email)` unique index for drift comparison. The initial migration creates it explicitly, tests verify it through `sqlite_master`, and future revisions must preserve/verify it manually.
+- The Docker SQLite database was empty before migration; no existing user rows or tables were deleted. No sample business data was inserted.
 
 ---
 
@@ -494,6 +549,4 @@ Verify and document the complete CampusCycle V1 application.
 
 ## Current Next Action
 
-**Start Phase 3 – Backend Foundation.**
-
-Begin with backend project setup and configuration. Do not implement database models, migrations, authentication or business workflows ahead of their designated phases.
+**Begin Phase 5 – Authentication and Authorization** after the approved Phase 4 handoff. No authentication endpoints or business workflows were implemented in Phase 4.

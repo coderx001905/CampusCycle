@@ -15,6 +15,8 @@ RUN groupadd --system --gid 10001 campuscycle \
     && chown campuscycle:campuscycle /data
 
 COPY --chown=campuscycle:campuscycle app ./app
+COPY --chown=campuscycle:campuscycle alembic.ini ./alembic.ini
+COPY --chown=campuscycle:campuscycle migrations ./migrations
 
 USER 10001:10001
 
