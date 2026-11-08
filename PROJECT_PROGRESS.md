@@ -17,7 +17,7 @@ Phase 1 is complete as a frontend prototype. It uses demonstration data and loca
 
 Phase 2 is complete as a design deliverable. System architecture, database design, detailed schema, API specifications and design decisions have been reviewed and approved.
 
-The backend foundation and SQLite connection/session infrastructure are implemented. Liveness and database readiness are separate checks. Phase 4 implements the approved seven SQLAlchemy models, constraints, indexes, and Alembic migrations. The initial Phase 4 migrations were applied to the existing Docker database after a read-only check confirmed it had no schema objects. The targeted exchange-request correction was tested locally and independently approved; that correction did not access or modify the persistent Docker database. Phase 5 implements authentication, college onboarding, account management, and authorization on the existing schema. Phase 6 implements resource listing management, owner-scoped inventory reads, and local image handling without schema changes. Phase 7 request, approval, reservation, purchase-confirmation, and pre-transfer cancellation workflows are implemented and verified. Transfer management, analytics, Docker deployment, and complete frontend-backend integration remain unimplemented in their later phases.
+The backend foundation and SQLite connection/session infrastructure are implemented. Liveness and database readiness are separate checks. Phase 4 implements the approved seven SQLAlchemy models, constraints, indexes, and Alembic migrations. The initial Phase 4 migrations were applied to the existing Docker database after a read-only check confirmed it had no schema objects. The targeted exchange-request correction was tested locally and independently approved; that correction did not access or modify the persistent Docker database. Phase 5 implements authentication, college onboarding, account management, and authorization on the existing schema. Phase 6 implements resource listing management, owner-scoped inventory reads, and local image handling without schema changes. Phase 7 request, approval, reservation, purchase-confirmation, and pre-transfer cancellation workflows, along with approved-quantity database integrity enforcement, are implemented and verified. Transfer management, analytics, Docker deployment, and complete frontend-backend integration remain unimplemented in their later phases.
 
 ---
 
@@ -400,13 +400,14 @@ Implement donation, exchange and purchase enquiry workflows with approved invent
 - [x] Implement request-level cancellation submission and owner-college review before any transfer row exists; approval releases only the request's reservation, while rejection restores the previous status.
 - [x] Use SQLite `BEGIN IMMEDIATE`, conditional inventory updates, and affected-row checks for write workflows.
 - [x] Add migration `a73c5f91d2e4` for approved quantity, rejection reason, cancellation metadata, foreign keys, and consistency constraints; retain the seven business tables.
-- [x] Verify populated migration upgrade, downgrade, and re-upgrade on isolated temporary SQLite databases.
+- [x] Add migration `2d1946b08dd1` to enforce approved-quantity database integrity: non-null `approved_quantity` must equal `requested_quantity` for exchange and purchase enquiries, while donation approvals may be partial.
+- [x] Verify populated migration upgrade, downgrade, and re-upgrade on isolated temporary SQLite databases across both migrations, including rejection of invalid historical data.
 - [x] Verify competing reservations with independent sessions: one 7-unit reservation succeeds from 10 available; the other conflicts; final inventory is 3 available and 7 reserved.
-- [x] Run complete backend regression suite: 148 passed, one Starlette/httpx deprecation warning.
+- [x] Run complete backend regression suite: 168 passed, one Starlette/httpx deprecation warning.
 
 ### Phase 7 Completion Boundary
 
-Phase 7 implements request, approval/rejection, reservation, purchase confirmation, and request-level pre-transfer cancellation workflows. All migration and automated tests ran against isolated temporary SQLite databases; the persistent development database and Docker were not accessed. No transfer/dispatch/receipt workflow, frontend integration, deployment configuration, or additional business table was added. The existing API blueprint now documents the required rejection reason and request-level cancellation contract, including the stored rejection reason field. The complete V1 application is not complete; Phase 8 remains upcoming.
+Phase 7 implements request, approval/rejection, reservation, purchase confirmation, and request-level pre-transfer cancellation workflows, with database-level integrity enforcement for approved quantities across donation, exchange, and purchase enquiries (migrations `a73c5f91d2e4` and `2d1946b08dd1`). All migration and automated tests ran against isolated temporary SQLite databases; the persistent development database and Docker were not accessed. No transfer/dispatch/receipt workflow, frontend integration, deployment configuration, or additional business table was added. The existing API blueprint now documents the required rejection reason and request-level cancellation contract, including the stored rejection reason field. The complete V1 application is not complete; Phase 8 remains upcoming.
 
 ---
 
@@ -575,4 +576,4 @@ Verify and document the complete CampusCycle V1 application.
 
 ## Current Next Action
 
-**Begin Phase 7 – Requests, Approvals and Reservations** after the completed Phase 6 handoff. Follow the approved request workflows and inventory consistency rules; do not implement transfer workflows early.
+**Begin Phase 8 – Logistics and Transfer Tracking** after the completed Phase 7 handoff and database integrity verification. Follow the approved transfer workflows, partial transfers, dispatch, receipt confirmation, and dispute rules; do not implement frontend integration early.

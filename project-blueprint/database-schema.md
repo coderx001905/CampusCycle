@@ -87,7 +87,7 @@ Constraints:
 | `purpose` | TEXT | No | Reason for request |
 | `message` | TEXT | Yes | Additional message |
 | `rejection_reason` | TEXT | Yes | Reason recorded by the resource-owning representative when rejecting |
-| `approved_quantity` | INTEGER | Yes | Approved amount; positive and no greater than requested quantity |
+| `approved_quantity` | INTEGER | Yes | Approved amount; positive and no greater than requested quantity (must equal requested quantity for exchange and purchase enquiry; may be partial for donation) |
 | `status` | VARCHAR(30) | No | Proposed values below |
 | `reviewed_by_user_id` | INTEGER | Yes | FK to reviewer |
 | `reviewed_at` | DATETIME | Yes | Review timestamp |
@@ -121,7 +121,7 @@ Constraints / validation:
 - Purchase enquiry approval alone does not reserve stock. Reservation is attempted on purchase-intent confirmation.
 - On insufficient stock at purchase confirmation, no reservation is made and the request remains open in `awaiting_resolution`.
 - `awaiting_resolution` must not be treated as `cancelled` or `completed`.
-- `approved_quantity`, when present, is positive and no greater than `requested_quantity`.
+- `approved_quantity`, when present, is positive and no greater than `requested_quantity`; for exchange and purchase enquiry requests it must equal `requested_quantity`, while donation requests permit partial approval.
 - Cancellation submission and decision fields are stored on the request row; no additional business table or request status is introduced.
 - Request-level cancellation is allowed only before transfer rows exist; approved cancellation releases the reservation associated with that request.
 - Rejection reason and cancellation submission/review metadata are constrained for consistent paired actor/timestamp/decision values.

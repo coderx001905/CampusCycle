@@ -68,13 +68,13 @@ Request endpoints use the `/api/v1` prefix and return the established success/er
 | `GET /requests/mine` | Paginated requests submitted by the caller's college. |
 | `GET /requests/received` | Paginated requests for resources owned by the caller's college. |
 | `GET /requests/{request_id}` | Retrieve a request as one of its participating colleges. |
-| `POST /requests/{request_id}/approve` | Approve a pending request; donation approval can be partial. |
+| `POST /requests/{request_id}/approve` | Approve a pending request; donation approval can be partial, while exchange and purchase enquiries require full approval. |
 | `POST /requests/{request_id}/reject` | Reject a pending request with a required reason. |
 | `POST /requests/{request_id}/purchase-confirmation` | Confirm an approved purchase enquiry and reserve its approved quantity. |
 | `POST /requests/{request_id}/cancel` | Submit a request-level cancellation before transfer rows exist. |
 | `POST /requests/{request_id}/cancellation-decision` | Resource-owning college approves or rejects a cancellation. |
 
-SQLite write operations acquire `BEGIN IMMEDIATE`; inventory uses conditional updates and row-count checks. Exchange approval reserves both resources in one transaction. Purchase approval does not reserve stock; confirmation reserves it, or persists `awaiting_resolution` and confirmation metadata before returning HTTP 409 `insufficient_stock`. Request cancellation is recorded on the request row; it releases only that request's reservation after approval and before any transfer exists. Rejection and cancellation reasons are stored on the existing `requests` table. Phase 7 migration `a73c5f91d2e4` adds these request fields and constraints without adding a business table. Tests use isolated temporary SQLite databases; no migration was applied to the persistent local database.
+SQLite write operations acquire `BEGIN IMMEDIATE`; inventory uses conditional updates and row-count checks. Exchange approval reserves both resources in one transaction. Purchase approval does not reserve stock; confirmation reserves it, or persists `awaiting_resolution` and confirmation metadata before returning HTTP 409 `insufficient_stock`. Request cancellation is recorded on the request row; it releases only that request's reservation after approval and before any transfer exists. Rejection and cancellation reasons are stored on the existing `requests` table. Phase 7 migration `a73c5f91d2e4` adds these request fields and constraints without adding a business table, and corrective migration `2d1946b08dd1` updates the `ck_requests_approved_quantity` check constraint to enforce at the database level that `approved_quantity` may be partial for donations, but must equal `requested_quantity` for exchange and purchase enquiries when non-null. Tests use isolated temporary SQLite databases; no migration was applied to the persistent local database.
 
 ## Database schema
 
