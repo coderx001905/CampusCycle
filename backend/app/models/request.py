@@ -19,7 +19,14 @@ class Request(Base):
         ),
         CheckConstraint("request_type IN ('donation', 'exchange', 'purchase_enquiry')", name="ck_requests_type"),
         CheckConstraint("status IN ('pending', 'approved', 'rejected', 'in_progress', 'awaiting_resolution', 'completed', 'cancelled')", name="ck_requests_status"),
-        CheckConstraint("approved_quantity IS NULL OR (approved_quantity > 0 AND approved_quantity <= requested_quantity)", name="ck_requests_approved_quantity"),
+        CheckConstraint(
+            "approved_quantity IS NULL OR ("
+            "approved_quantity > 0 AND ("
+            "(request_type = 'donation' AND approved_quantity <= requested_quantity) OR "
+            "(request_type IN ('exchange', 'purchase_enquiry') AND approved_quantity = requested_quantity)"
+            "))",
+            name="ck_requests_approved_quantity",
+        ),
         CheckConstraint("cancellation_decision IS NULL OR cancellation_decision IN ('approved', 'rejected')", name="ck_requests_cancellation_decision"),
         CheckConstraint("(cancellation_reviewed_at IS NULL AND cancellation_reviewed_by_user_id IS NULL AND cancellation_decision IS NULL) OR (cancellation_reviewed_at IS NOT NULL AND cancellation_reviewed_by_user_id IS NOT NULL AND cancellation_decision IS NOT NULL)", name="ck_requests_cancellation_review_pair"),
         CheckConstraint("(cancellation_requested_at IS NULL AND cancellation_requested_by_user_id IS NULL AND cancellation_reason IS NULL AND cancellation_previous_status IS NULL) OR (cancellation_requested_at IS NOT NULL AND cancellation_requested_by_user_id IS NOT NULL AND cancellation_reason IS NOT NULL AND cancellation_previous_status IS NOT NULL)", name="ck_requests_cancellation_submission_fields"),

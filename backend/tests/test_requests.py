@@ -223,6 +223,22 @@ def test_request_check_constraints_enforce_approved_and_cancellation_fields(requ
             db.commit()
         db.rollback()
 
+    exchange_rid = make_request(ctx, kind="exchange", requested=5, offered=2)
+    with ctx["sessions"]() as db:
+        req = db.get(Request, exchange_rid)
+        req.approved_quantity = 3
+        with pytest.raises(IntegrityError):
+            db.commit()
+        db.rollback()
+
+    purchase_rid = make_request(ctx, kind="purchase_enquiry", requested=5)
+    with ctx["sessions"]() as db:
+        req = db.get(Request, purchase_rid)
+        req.approved_quantity = 3
+        with pytest.raises(IntegrityError):
+            db.commit()
+        db.rollback()
+
 
 def test_exchange_approval_atomic_and_partial_rejected(request_context):
     ctx = request_context

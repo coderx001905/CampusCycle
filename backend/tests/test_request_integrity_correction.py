@@ -28,6 +28,8 @@ def _request(
     request_type: str,
     offered_resource: Resource | None,
     offered_quantity: int | None,
+    requested_quantity: int = 1,
+    approved_quantity: int | None = None,
 ) -> Request:
     college = College(
         name="Test College", address="1 Campus Road", city="Test City",
@@ -51,11 +53,12 @@ def _request(
         requesting_college=college,
         requested_by=user,
         offered_resource=offered_resource,
-        requested_quantity=1,
+        requested_quantity=requested_quantity,
         offered_quantity=offered_quantity,
         request_type=request_type,
         purpose="Database constraint regression case",
         status="pending",
+        approved_quantity=approved_quantity,
     )
 
 
@@ -104,6 +107,69 @@ def test_request_offer_fields_are_enforced_by_sqlite(
         if accepted:
             session.flush()
             assert request.id is not None
+        else:
+            with pytest.raises(IntegrityError):
+                session.flush()
+            session.rollback()
+
+
+@pytest.mark.parametrize(
+    ("request_type", "requested_quantity", "approved_quantity", "accepted"),
+    [
+        ("donation", 10, 4, True),     # Partial donation accepted
+        ("donation", 10, 10, True),    # Full donation accepted
+        ("donation", 10, None, True),  # NULL approved quantity accepted (unapproved historical)
+        ("donation", 10, 0, False),    # Zero rejected
+        ("donation", 10, -1, False),   # Negative rejected
+        ("donation", 10, 11, False),   # Exceeding requested rejected
+        ("exchange", 10, 4, False),    # Partial exchange rejected
+        ("exchange", 10, 10, True),    # Full exchange accepted
+        ("exchange", 10, None, True),  # NULL approved quantity accepted
+        ("exchange", 10, 0, False),    # Zero rejected
+        ("exchange", 10, -1, False),   # Negative rejected
+        ("exchange", 10, 11, False),   # Exceeding requested rejected
+        ("purchase_enquiry", 10, 4, False),   # Partial purchase rejected
+        ("purchase_enquiry", 10, 10, True),   # Full purchase accepted
+        ("purchase_enquiry", 10, None, True), # NULL approved quantity accepted
+        ("purchase_enquiry", 10, 0, False),   # Zero rejected
+        ("purchase_enquiry", 10, -1, False),  # Negative rejected
+        ("purchase_enquiry", 10, 11, False),  # Exceeding requested rejected
+    ],
+)
+def test_approved_quantity_check_constraint_enforced_by_database(
+    db_engine, request_type, requested_quantity, approved_quantity, accepted
+) -> None:
+    with Session(db_engine) as session:
+        college = College(
+            name="Offering College", address="2 Campus Road", city="Test City",
+            contact_email="offering@example.edu", verification_status="verified",
+        )
+        session.add(college)
+        session.flush()
+        offering_user = User(
+            college=college, name="Offering Representative", email="offering-rep@example.edu",
+            password_hash="test-hash", role="college_representative",
+        )
+        offered_resource = Resource(
+            college=college, created_by=offering_user, name="Offered Resource", category="Books",
+            condition="Used", quantity_total=5, quantity_available=5, quantity_reserved=0,
+            unit="pieces", transfer_type="exchange", status="active",
+        )
+        session.add_all([offering_user, offered_resource])
+        session.flush()
+
+        req = _request(
+            session,
+            request_type=request_type,
+            offered_resource=offered_resource if request_type == "exchange" else None,
+            offered_quantity=2 if request_type == "exchange" else None,
+            requested_quantity=requested_quantity,
+            approved_quantity=approved_quantity,
+        )
+        session.add(req)
+        if accepted:
+            session.flush()
+            assert req.id is not None
         else:
             with pytest.raises(IntegrityError):
                 session.flush()
@@ -219,7 +285,7 @@ def test_corrective_migration_from_previous_head_preserves_records_and_foreign_k
             assert connection.execute(text(
                 "SELECT token_hash, jti FROM refresh_tokens WHERE id=1"
             )).one() == ("existing-token-hash", "existing-jti")
-            assert connection.execute(text("SELECT version_num FROM alembic_version")).scalar_one() == "a73c5f91d2e4"
+            assert connection.execute(text("SELECT version_num FROM alembic_version")).scalar_one() == "2d1946b08dd1"
             assert connection.exec_driver_sql("PRAGMA foreign_keys").scalar_one() == 1
             assert connection.execute(text("PRAGMA foreign_key_check")).all() == []
 
@@ -263,7 +329,7 @@ def test_corrective_migration_runs_from_fresh_database(tmp_path) -> None:
             "transfers", "transfer_status_history", "refresh_tokens",
         }
         with engine.connect() as connection:
-            assert connection.execute(text("SELECT version_num FROM alembic_version")).scalar_one() == "a73c5f91d2e4"
+            assert connection.execute(text("SELECT version_num FROM alembic_version")).scalar_one() == "2d1946b08dd1"
             assert connection.exec_driver_sql("PRAGMA foreign_keys").scalar_one() == 1
             assert connection.execute(text("PRAGMA foreign_key_check")).all() == []
     finally:
@@ -291,7 +357,7 @@ def test_phase_seven_migration_from_current_head_preserves_populated_database(tm
             Base.metadata.tables["requests"].columns.keys()
         )
         with engine.connect() as connection:
-            assert connection.execute(text("SELECT version_num FROM alembic_version")).scalar_one() == "a73c5f91d2e4"
+            assert connection.execute(text("SELECT version_num FROM alembic_version")).scalar_one() == "2d1946b08dd1"
             assert connection.execute(text("SELECT count(*) FROM requests")).scalar_one() == 2
             assert connection.execute(text("SELECT count(*) FROM transfers")).scalar_one() == 1
             assert connection.execute(text("SELECT rejection_reason, approved_quantity, cancellation_requested_at FROM requests WHERE id=1")).one() == (None, None, None)
@@ -299,3 +365,143 @@ def test_phase_seven_migration_from_current_head_preserves_populated_database(tm
             assert connection.exec_driver_sql("PRAGMA foreign_key_check").all() == []
     finally:
         engine.dispose()
+
+
+def test_approved_quantity_integrity_migration_upgrade_and_downgrade(tmp_path) -> None:
+    backend_dir = Path(__file__).resolve().parents[1]
+    database = tmp_path / "approved-quantity-integrity.sqlite3"
+    database_url = f"sqlite:///{database.as_posix()}"
+
+    previous = _run_alembic(backend_dir, database, "upgrade", "a73c5f91d2e4")
+    assert previous.returncode == 0, previous.stdout + previous.stderr
+    _seed_previous_head_records(database_url)
+
+    engine = create_database_engine(database_url)
+    try:
+        with engine.begin() as conn:
+            conn.execute(text(
+                "INSERT INTO requests (id, resource_id, requesting_college_id, requested_by_user_id, "
+                "offered_resource_id, requested_quantity, offered_quantity, request_type, purpose, "
+                "approved_quantity, status) "
+                "VALUES (3, 1, 1, 1, NULL, 5, NULL, 'donation', 'Partial donation', 2, 'approved')"
+            ))
+            conn.execute(text(
+                "INSERT INTO requests (id, resource_id, requesting_college_id, requested_by_user_id, "
+                "offered_resource_id, requested_quantity, offered_quantity, request_type, purpose, "
+                "approved_quantity, status) "
+                "VALUES (4, 1, 1, 1, 1, 4, 2, 'exchange', 'Full exchange', 4, 'approved')"
+            ))
+            conn.execute(text(
+                "INSERT INTO requests (id, resource_id, requesting_college_id, requested_by_user_id, "
+                "offered_resource_id, requested_quantity, offered_quantity, request_type, purpose, "
+                "approved_quantity, status) "
+                "VALUES (5, 1, 1, 1, NULL, 6, NULL, 'purchase_enquiry', 'Full purchase', 6, 'approved')"
+            ))
+            conn.execute(text(
+                "INSERT INTO requests (id, resource_id, requesting_college_id, requested_by_user_id, "
+                "offered_resource_id, requested_quantity, offered_quantity, request_type, purpose, "
+                "approved_quantity, status) "
+                "VALUES (6, 1, 1, 1, NULL, 8, NULL, 'purchase_enquiry', 'Historical unapproved purchase', NULL, 'pending')"
+            ))
+    finally:
+        engine.dispose()
+
+    upgrade = _run_alembic(backend_dir, database, "upgrade", "head")
+    assert upgrade.returncode == 0, upgrade.stdout + upgrade.stderr
+
+    engine = create_database_engine(database_url)
+    try:
+        inspector = inspect(engine)
+        assert set(inspector.get_table_names()) == {
+            "alembic_version", "colleges", "users", "resources", "requests",
+            "transfers", "transfer_status_history", "refresh_tokens",
+        }
+        assert {column["name"] for column in inspector.get_columns("requests")} == set(
+            Base.metadata.tables["requests"].columns.keys()
+        )
+        assert len(inspector.get_foreign_keys("requests")) == 8
+        assert {index["name"] for index in inspector.get_indexes("requests")} == {
+            "ix_requests_resource_id_status",
+            "ix_requests_requesting_college_id_status",
+            "ix_requests_request_type_status",
+        }
+        with engine.connect() as connection:
+            assert connection.execute(text("SELECT version_num FROM alembic_version")).scalar_one() == "2d1946b08dd1"
+            assert connection.execute(text("SELECT count(*) FROM requests")).scalar_one() == 6
+            assert connection.exec_driver_sql("PRAGMA foreign_keys").scalar_one() == 1
+            assert connection.execute(text("PRAGMA foreign_key_check")).all() == []
+
+            # Partial exchange approval rejected by database
+            with pytest.raises(IntegrityError):
+                connection.execute(text(
+                    "INSERT INTO requests (resource_id, requesting_college_id, requested_by_user_id, "
+                    "offered_resource_id, requested_quantity, offered_quantity, request_type, purpose, "
+                    "approved_quantity, status) "
+                    "VALUES (1, 1, 1, 1, 5, 2, 'exchange', 'Partial exchange rejected', 3, 'approved')"
+                ))
+
+            # Partial purchase approval rejected by database
+            with pytest.raises(IntegrityError):
+                connection.execute(text(
+                    "INSERT INTO requests (resource_id, requesting_college_id, requested_by_user_id, "
+                    "offered_resource_id, requested_quantity, offered_quantity, request_type, purpose, "
+                    "approved_quantity, status) "
+                    "VALUES (1, 1, 1, NULL, 5, NULL, 'purchase_enquiry', 'Partial purchase rejected', 3, 'approved')"
+                ))
+
+            # Partial donation approval accepted by database
+            connection.execute(text(
+                "INSERT INTO requests (resource_id, requesting_college_id, requested_by_user_id, "
+                "offered_resource_id, requested_quantity, offered_quantity, request_type, purpose, "
+                "approved_quantity, status) "
+                "VALUES (1, 1, 1, NULL, 5, NULL, 'donation', 'Partial donation accepted', 3, 'approved')"
+            ))
+            connection.commit()
+    finally:
+        engine.dispose()
+
+    downgrade = _run_alembic(backend_dir, database, "downgrade", "a73c5f91d2e4")
+    assert downgrade.returncode == 0, downgrade.stdout + downgrade.stderr
+    engine = create_database_engine(database_url)
+    try:
+        with engine.connect() as connection:
+            assert connection.execute(text("SELECT version_num FROM alembic_version")).scalar_one() == "a73c5f91d2e4"
+            assert connection.exec_driver_sql("PRAGMA foreign_key_check").all() == []
+    finally:
+        engine.dispose()
+
+    reupgrade = _run_alembic(backend_dir, database, "upgrade", "head")
+    assert reupgrade.returncode == 0, reupgrade.stdout + reupgrade.stderr
+    engine = create_database_engine(database_url)
+    try:
+        with engine.connect() as connection:
+            assert connection.execute(text("SELECT version_num FROM alembic_version")).scalar_one() == "2d1946b08dd1"
+            assert connection.exec_driver_sql("PRAGMA foreign_key_check").all() == []
+    finally:
+        engine.dispose()
+
+
+def test_migration_aborts_if_existing_rows_violate_approved_quantity_rules(tmp_path) -> None:
+    backend_dir = Path(__file__).resolve().parents[1]
+    database = tmp_path / "invalid-historical-data.sqlite3"
+    database_url = f"sqlite:///{database.as_posix()}"
+
+    previous = _run_alembic(backend_dir, database, "upgrade", "a73c5f91d2e4")
+    assert previous.returncode == 0, previous.stdout + previous.stderr
+    _seed_previous_head_records(database_url)
+
+    engine = create_database_engine(database_url)
+    try:
+        with engine.begin() as conn:
+            conn.execute(text(
+                "INSERT INTO requests (id, resource_id, requesting_college_id, requested_by_user_id, "
+                "offered_resource_id, requested_quantity, offered_quantity, request_type, purpose, "
+                "approved_quantity, status) "
+                "VALUES (3, 1, 1, 1, 1, 5, 2, 'exchange', 'Invalid partial exchange', 2, 'approved')"
+            ))
+    finally:
+        engine.dispose()
+
+    upgrade = _run_alembic(backend_dir, database, "upgrade", "head")
+    assert upgrade.returncode != 0
+    assert "Cannot apply approved-quantity integrity correction" in (upgrade.stdout + upgrade.stderr)
