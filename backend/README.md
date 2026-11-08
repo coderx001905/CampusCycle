@@ -159,6 +159,34 @@ Phase 6 tests use isolated temporary SQLite databases and temporary image direct
 ..\.venv\Scripts\python.exe -m pytest -q
 ```
 
+## Phase 8 logistics and transfer tracking
+
+All transfer endpoints use the `/api/v1` prefix and standard `{"success": true, "data": ...}` response envelopes.
+
+| Method and path | Access | Purpose |
+|---|---|---|
+| `POST /requests/{request_id}/transfers` | Source College Representative | Create a partial transfer batch; aggregate quantities bounded by approved leg quota; supports replacement batches. |
+| `GET /transfers` | Authenticated user (scoped) | List transfers; college representatives view their own college's transfers; Platform Admin views all. Supports `request_id`, `status`, `transfer_leg`, `page`, and `page_size`. |
+| `GET /transfers/{transfer_id}` | Source/destination Rep or Platform Admin | Retrieve detailed transfer record; foreign college access returns 404. |
+| `GET /transfers/{transfer_id}/history` | Source/destination Rep or Platform Admin | Retrieve chronological status audit history for the transfer. |
+| `POST /transfers/{transfer_id}/dispatch` | Source College Representative | Mark a `preparing` transfer as `dispatched` with optional notes and delivery date. |
+| `POST /transfers/{transfer_id}/receipt` | Destination College Representative | Confirm receipt with good, damaged, and missing quantities; good items deducted from total and reserved inventory; damage/missing opens dispute. |
+| `POST /transfers/{transfer_id}/cancel` | Participating College Representative | Submit cancellation request for `preparing` or `dispatched` batch; status becomes `cancellation_pending`. |
+| `POST /transfers/{transfer_id}/cancellation-decision` | Resource Owner Rep (pre-dispatch) or Platform Admin (post-dispatch) | Approve or reject batch cancellation; approved unshipped batches release reserved inventory. |
+| `POST /transfers/{transfer_id}/dispute-resolution` | Platform Admin only | Resolve an open dispute via `accept_report`, `replacement_approved`, or `claim_rejected`. |
+
+### Inventory accounting rules and invariants
+
+Throughout all transfer operations, the invariant `quantity_available + quantity_reserved = quantity_total` is strictly preserved:
+
+1. **Delivered good items:** Deducted immediately upon verified receipt from the sender's `quantity_total` and `quantity_reserved`. `quantity_available` is unaffected.
+2. **Damaged / missing items:** Retained in `quantity_reserved` until Platform Admin dispute resolution.
+3. **Dispute `accept_report`:** Only verified good quantities are deducted. Damaged and missing quantities remain reserved; they are NOT automatically written off or released.
+4. **Dispute `replacement_approved`:** Disputed quantity remains reserved. A replacement batch (`replacement_for_transfer_id`) is created, reserving replacement stock atomically (`quantity_available -= qty, quantity_reserved += qty`). Only upon verified receipt of the replacement batch is the original disputed quantity written off from the original resource.
+5. **Dispute `claim_rejected`:** Disputed quantity remains in `quantity_reserved` for manual accounting; not released to available and not written off.
+6. **Cancellation of unshipped batch:** Reserved quantity is released back to available (`quantity_available += qty, quantity_reserved -= qty`).
+7. **Parent Request Completion:** A request can only complete when all approved items are verified delivered in good condition and zero disputed inventory remains reserved. Neither `accept_report` nor `claim_rejected` with damaged/missing items allows parent request completion.
+
 ## Alembic migrations
 
 Alembic is the authoritative schema creation/evolution mechanism. FastAPI startup does not call `create_all()`. The initial revision creates the approved schema; the follow-up removes inferred status defaults so the database does not impose defaults absent from the approved specification.

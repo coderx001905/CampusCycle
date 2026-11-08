@@ -176,47 +176,108 @@ Inventory reads should distinguish total, available, and reserved quantities. Do
 
 ## 8. Transfers and receipt
 
+All transfer endpoints use the `/api/v1` prefix and standard `{"success": true, "data": ...}` response envelopes.
+
 | Method | Endpoint | Purpose / access |
 |---|---|---|
 | POST | `/requests/{request_id}/transfers` | Create a partial transfer batch; source college representative |
-| GET | `/transfers` | Participating college scoped list |
-| GET | `/transfers/{transfer_id}` | Source/destination college or platform administrator |
-| POST | `/transfers/{transfer_id}/dispatch` | Source college representative |
-| POST | `/transfers/{transfer_id}/receipt` | Destination college representative; supports good/damaged/missing quantities |
-| POST | `/transfers/{transfer_id}/cancel` | Submit cancellation request; decision routed to resource-owning college representative before any dispatch or Platform Admin after dispatch has begun |
-| POST | `/transfers/{transfer_id}/cancellation-decision` | Resource-owning college representative if no batch has been dispatched; Platform Admin if any batch has been dispatched |
-| POST | `/transfers/{transfer_id}/dispute-resolution` | Platform Admin only; records approved outcome and inventory adjustment |
-| GET | `/transfers/{transfer_id}/history` | Participating college or platform administrator |
+| GET | `/transfers` | Participating college scoped list; Platform Admin global list |
+| GET | `/transfers/{transfer_id}` | Source/destination college representative or platform administrator |
+| GET | `/transfers/{transfer_id}/history` | Transfer status audit history; participating college or platform administrator |
+| POST | `/transfers/{transfer_id}/dispatch` | Mark batch as dispatched; source college representative |
+| POST | `/transfers/{transfer_id}/receipt` | Confirm receipt with good/damaged/missing breakdown; destination college representative |
+| POST | `/transfers/{transfer_id}/cancel` | Submit batch cancellation request; participating college representative |
+| POST | `/transfers/{transfer_id}/cancellation-decision` | Cancellation review: resource-owning college representative before any dispatch, Platform Admin after dispatch |
+| POST | `/transfers/{transfer_id}/dispute-resolution` | Resolve open transfer dispute; Platform Admin only |
 
-### Receipt payload (illustrative)
+### Transfer Creation Payload
 
 ```json
 {
-  "quantity_received_good": 25,
-  "quantity_damaged": 3,
-  "quantity_missing": 2,
-  "receipt_confirmation": "25 chairs received in good condition; 3 damaged; 2 missing."
+  "transfer_leg": "requested_resource",
+  "quantity": 10,
+  "pickup_or_delivery_date": "2026-11-15T10:00:00Z",
+  "dispatch_notes": "First batch of lab equipment",
+  "replacement_for_transfer_id": null
+}
+```
+
+Validation & Authorization:
+- Only an active representative of the source college (`request.resource.college_id` for `requested_resource` leg; `request.requesting_college_id` for `offered_resource` leg) can create a batch.
+- Both colleges must be verified.
+- The parent request must be in `approved` or `in_progress` status. For purchase enquiries, purchase intent must already be confirmed (`in_progress`).
+- For non-replacement transfers, aggregate created quantities on that leg (excluding cancelled batches) cannot exceed the approved quantity for the leg.
+- For replacement transfers (`replacement_for_transfer_id` specified), the target transfer must have `dispute_outcome == "replacement_approved"`, quantity cannot exceed the disputed damaged + missing count, and replacement stock is reserved atomically before batch creation.
+- Initial transfer status is `preparing`, dispute status is `none`, and a `TransferStatusHistory` audit record is inserted atomically.
+
+### Dispatch Payload
+
+```json
+{
+  "dispatch_notes": "Dispatched via campus transport truck #4",
+  "pickup_or_delivery_date": "2026-11-16T14:00:00Z"
 }
 ```
 
 Validation:
-- The three quantities must be non-negative.
-- Their sum must equal the dispatched quantity for a fully reconciled receipt report, unless the business later explicitly allows an unknown/unverified remainder.
-- Good quantity can be confirmed.
-- Damaged/missing quantity opens a dispute and cannot be marked completed until Platform Admin records a resolution.
-- Approved outcomes: accept the verified report/good quantity, approve a replacement transfer, or reject the claim after review.
-- Disputed quantities remain held until physical status is verified and the resolution is recorded; inventory is adjusted only according to the verified outcome, in the same transaction as the resolution and audit record.
+- Source college representative only.
+- Current transfer status must be `preparing`. Duplicate dispatch is rejected with HTTP 409 `invalid_transfer_state`.
+- Transitions status to `dispatched` and creates an audit history entry atomically.
 
-### Cancellation behavior
+### Receipt Payload
 
-If no batch has been dispatched, an authorized representative of the resource-owning college reviews the cancellation request. If any batch has been dispatched, Platform Admin reviews cancellation of remaining unshipped batches.
+```json
+{
+  "quantity_received_good": 7,
+  "quantity_damaged": 2,
+  "quantity_missing": 1,
+  "receipt_confirmation": "7 in good condition, 2 broken screen, 1 missing box."
+}
+```
 
-If any batch has been dispatched:
-- the college submits a cancellation request;
-- Platform Admin approves or rejects;
-- only unshipped batches may be cancelled;
-- reserved quantity for approved cancelled unshipped batches is released;
-- already-dispatched batches continue through receipt/dispute resolution.
+Validation:
+- Destination college representative only.
+- Current transfer status must be `dispatched`. Duplicate confirmation is rejected with HTTP 409 `invalid_transfer_state`.
+- Quantities must be non-negative and their sum must equal the batch `quantity` (HTTP 422 `invalid_receipt_quantities` otherwise).
+- Verified good quantity is deducted immediately from the source resource's `quantity_total` and `quantity_reserved`.
+- If `quantity_damaged > 0` or `quantity_missing > 0`, the transfer transitions to status `disputed` with `dispute_status = "open"`. Disputed items remain in `quantity_reserved`.
+- If all items are good (`damaged == 0 and missing == 0`), transfer transitions to status `completed`. If the transfer is a replacement batch, the original disputed quantity is written off from the original resource.
+
+### Dispute Resolution Payload
+
+```json
+{
+  "dispute_outcome": "accept_report",
+  "dispute_resolution": "Inspection confirmed damage during transit; written off."
+}
+```
+
+Validation & Inventory Rules:
+- Platform Admin only (HTTP 403 `forbidden` for college representatives).
+- Transfer must have status `disputed` and `dispute_status = "open"` (HTTP 409 `invalid_dispute_state` on repeated resolution).
+- Supported outcomes:
+  - `accept_report`: Accepts the verified report; only verified good quantities are deducted; damaged and missing quantities remain reserved and are NOT automatically written off or released. Transfer transitions to `completed`, `dispute_status = "resolved"`.
+  - `replacement_approved`: Authorizes a replacement batch; disputed quantity remains held in `quantity_reserved` until verified receipt of the replacement batch. Transfer transitions to `completed`, `dispute_status = "resolved"`.
+  - `claim_rejected`: Rejects the damage/loss claim; disputed quantity remains held in `quantity_reserved` for manual accounting; not released to available and not written off. Transfer transitions to `completed`, `dispute_status = "resolved"`.
+
+### Cancellation Behavior
+
+- Participating college representatives submit cancellation via `POST /transfers/{transfer_id}/cancel` with a non-empty `reason`.
+- Permitted only for transfers in status `preparing` or `dispatched` (not `disputed` or already `cancelled`/`completed`). Transfer transitions to `cancellation_pending`.
+- Cancellation review via `POST /transfers/{transfer_id}/cancellation-decision` with `{"decision": "approved" | "rejected"}`:
+  - **Before any batch of the request has been dispatched:** Decision belongs exclusively to the resource-owning college representative.
+  - **After any batch has been dispatched:** Decision belongs exclusively to Platform Admin.
+  - Only unshipped (`preparing`) batches can be approved for cancellation. If approved, the batch's reserved quantity is released back to `quantity_available` on the resource, and status moves to `cancelled`.
+  - Dispatched batches cannot be cancelled (HTTP 409 `cannot_cancel_dispatched`); they must proceed through receipt and dispute resolution.
+  - If rejected, the transfer status is restored to its previous status (`preparing` or `dispatched`).
+
+### Request Aggregate Completion Rules
+
+A request transitions to `completed` only when:
+- All required movement legs (`requested_resource`, plus `offered_resource` for exchanges) have all approved quantities fully accounted for.
+- All non-cancelled batches have been received and completed.
+- No in-flight batches (`preparing`, `dispatched`, `cancellation_pending`) or open disputes (`open`) remain.
+- All approved replacement workflows have been completely fulfilled and received.
 
 ## 9. Analytics
 
