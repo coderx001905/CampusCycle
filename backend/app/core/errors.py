@@ -45,6 +45,7 @@ async def http_error_handler(
         403: "forbidden",
         404: "not_found",
         409: "conflict",
+        413: "payload_too_large",
     }
     detail = exc.detail if isinstance(exc.detail, str) else "The request could not be processed."
     return JSONResponse(

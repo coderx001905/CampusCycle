@@ -1,6 +1,6 @@
 # CampusCycle Backend
 
-The backend is a FastAPI application using SQLAlchemy 2.x, SQLite, and Alembic. It implements the approved seven-table persistence schema and Phase 5 authentication, college onboarding, account management, and authorization. Resource/request/transfer business workflows and frontend-backend integration remain later phases.
+The backend is a FastAPI application using SQLAlchemy 2.x, SQLite, and Alembic. It implements the approved seven-table persistence schema, Phase 5 authentication and college/user management, and Phase 6 resource listings, owner-scoped inventory reads, and local resource images. Requests/reservations, transfers, analytics, and frontend-backend integration remain later phases.
 
 ## Local development
 
@@ -74,7 +74,72 @@ Relationships use explicit foreign keys and `RESTRICT` deletion behavior for bus
 
 Date/time values use the `UTCDateTime` SQLAlchemy type: values are normalized to UTC on writes and returned timezone-aware on reads. Created/updated timestamps use UTC defaults, with `updated_at` refreshed on ORM updates.
 
-The database layer does not implement resource/request/transfer service rules. College ownership checks for those business records, atomic inventory reservations, transfer state transitions, aggregate transfer quantities, and cancellation/dispute permissions remain for their designated later phases. Phase 5 implements refresh-token rotation and reuse detection using the approved seven-day lifetime. Purchase payments remain outside CampusCycle. Optional refresh-token user-agent and IP columns are left NULL because the project has not approved a collection or retention policy for those values.
+The database layer supplies persistence and constraints; service-layer resource ownership, listing visibility, status rules, and inventory reads are implemented in Phase 6. Request workflows and atomic inventory reservations, transfer state transitions, aggregate transfer quantities, and cancellation/dispute permissions remain for their designated later phases. Phase 5 implements refresh-token rotation and reuse detection using the approved seven-day lifetime. Purchase payments remain outside CampusCycle. Optional refresh-token user-agent and IP columns are left NULL because the project has not approved a collection or retention policy for those values.
+
+## Phase 6 resource management
+
+All resource endpoints use the `/api/v1` prefix and the approved `{"success": true, "data": ...}` response envelope.
+
+| Method and path | Access | Purpose |
+|---|---|---|
+| `POST /resources` | Verified College Representative | Create a listing; college/creator identity and initial inventory are server-derived. |
+| `GET /resources` | Any authenticated user | Browse active, stocked listings with search, filters, and pagination. |
+| `GET /resources/{resource_id}` | Any authenticated user | Read an active listing; an owner may also view their inactive/depleted listing. |
+| `PATCH /resources/{resource_id}` | Owning College Representative | Edit descriptive fields only. |
+| `PATCH /resources/{resource_id}/status` | Owning College Representative | Activate or deactivate a listing. `depleted` is system-managed. |
+| `GET /inventory/me` | Verified College Representative | Read all own-college listing quantities, including reserved quantity. |
+| `POST /resources/{resource_id}/image` | Owning College Representative | Upload a listing image as multipart field `file`. |
+| `GET /resources/{resource_id}/image` | Authenticated user with listing visibility | Serve a validated image through the API. |
+| `DELETE /resources/{resource_id}/image` | Owning College Representative | Remove the listing image. |
+
+Example listing creation request:
+
+```json
+{
+  "name": "Calculus Textbook",
+  "description": "First year mathematics textbook",
+  "category": "Books",
+  "condition": "Good, lightly used",
+  "quantity": 8,
+  "unit": "copies",
+  "transfer_type": "donation",
+  "indicative_price": null
+}
+```
+
+The endpoint initializes `quantity_total` and `quantity_available` from `quantity`, sets `quantity_reserved` to zero, and sets status to `active`. The response exposes available quantity but not total or reserved quantities. `GET /resources` accepts `search`, `category`, `condition`, `transfer_type`, `college_id`, `page` (default 1), and `page_size` (default 20, maximum 100). Search covers name and description; category and condition use case-insensitive exact matching. Marketplace responses include pagination metadata and only active listings with positive physical stock. Owner inventory is a separate response and is restricted to the verified caller's college.
+
+Example creation response:
+
+```json
+{
+  "success": true,
+  "data": {
+    "id": 42,
+    "name": "Calculus Textbook",
+    "description": "First year mathematics textbook",
+    "category": "Books",
+    "condition": "Good, lightly used",
+    "quantity_available": 8,
+    "unit": "copies",
+    "transfer_type": "donation",
+    "indicative_price": null,
+    "status": "active",
+    "image_url": null,
+    "college": {"id": 4, "name": "North College", "city": "Pune"}
+  }
+}
+```
+
+Resource edits accept only `name`, `description`, `category`, `condition`, `unit`, `transfer_type`, and `indicative_price`. Quantity and status cannot be edited through that endpoint. Representatives can set `active` or `inactive`; the service marks a resource `depleted` when physical `quantity_total` is zero. Zero available quantity alone does not deplete a listing. Reactivation requires positive physical stock. Reservation and stock-adjustment workflows remain outside Phase 6.
+
+Images must be JPEG, PNG, or WebP, no larger than 5 MiB, and the filename extension, MIME type, and decoded file format must agree. The request-receiving middleware counts actual streamed bytes for this upload route before FastAPI parses multipart data, with a 64 KiB allowance for multipart framing and headers. It does not buffer the body and does not rely on `Content-Length`; over-limit requests receive the standard 413 error envelope. Pillow checks dimensions before full decoding and rejects images above 12 million pixels or 6,000 pixels on either side, verifies and decodes accepted images, rejects animation, applies orientation, then re-encodes to strip supplied metadata. The server generates a UUID filename and stores only that generated reference in `resources.image_path`; client filenames and paths are never used as storage paths. The directory defaults to `backend/uploads/resource-images` and can be changed with `CC_RESOURCE_IMAGE_DIR` (absolute paths are also supported). The default upload directory is excluded from Git. Replacement and removal use a conditional database update against the previously observed image reference; stale concurrent operations receive 409 and cannot overwrite a newer image. Replacement writes the new file before committing its reference and removes the previous file only after commit. Failed database writes clean up the new file and preserve the old reference/file. Storage-directory creation errors are reported without masking the original failure.
+
+Phase 6 tests use isolated temporary SQLite databases and temporary image directories. Run the full backend suite from `D:\CampusCycle\backend`:
+
+```powershell
+..\.venv\Scripts\python.exe -m pytest -q
+```
 
 ## Alembic migrations
 

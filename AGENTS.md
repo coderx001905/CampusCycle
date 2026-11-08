@@ -16,8 +16,9 @@ Use the `project-blueprint/` directory as the source of truth for approved techn
 - Phase 3 — Backend Foundation: **COMPLETED**.
 - Phase 4 — Database Development: **COMPLETED and independently approved**.
 - Phase 5 - Authentication and Authorization: **COMPLETED**.
+- Phase 6 – Resource Management: **COMPLETED**.
 
-Phase 1 uses demonstration data and local React state. Phase 4 provides the approved database schema and migrations. Phase 5 implements real authentication, college onboarding, account management, and authorization; persisted resource/request/transfer workflows and complete frontend-backend integration are not yet implemented.
+Phase 1 uses demonstration data and local React state. Phase 4 provides the approved database schema and migrations. Phase 5 implements authentication, college onboarding, account management, and authorization. Phase 6 implements resource listing management, inventory reads, and local image handling without schema changes. Request/reservation and transfer workflows and complete frontend-backend integration are not yet implemented.
 
 Do not describe the entire application as complete.
 
@@ -144,7 +145,7 @@ Phase names and numbering must match it exactly.
 | 3 | Backend Foundation | COMPLETED |
 | 4 | Database Development | COMPLETED and independently approved |
 | 5 | Authentication and Authorization | COMPLETED |
-| 6 | Resource Management | UPCOMING |
+| 6 | Resource Management | COMPLETED |
 | 7 | Requests, Approvals and Reservations | UPCOMING |
 | 8 | Logistics and Transfer Tracking | UPCOMING |
 | 9 | Frontend-Backend Integration | UPCOMING |

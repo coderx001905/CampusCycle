@@ -8,6 +8,7 @@
 - **Phase 3 – Backend Foundation: COMPLETED**
 - **Phase 4 – Database Development: COMPLETED and independently approved**
 - **Phase 5 - Authentication and Authorization: COMPLETED**
+- **Phase 6 – Resource Management: COMPLETED**
 
 ### Current Completion Boundary
 
@@ -15,7 +16,7 @@ Phase 1 is complete as a frontend prototype. It uses demonstration data and loca
 
 Phase 2 is complete as a design deliverable. System architecture, database design, detailed schema, API specifications and design decisions have been reviewed and approved.
 
-The backend foundation and SQLite connection/session infrastructure are implemented. Liveness and database readiness are separate checks. Phase 4 implements the approved seven SQLAlchemy models, constraints, indexes, and Alembic migrations. The initial Phase 4 migrations were applied to the existing Docker database after a read-only check confirmed it had no schema objects. The targeted exchange-request correction was tested locally and independently approved; that correction did not access or modify the persistent Docker database. Phase 5 now implements authentication, college onboarding, account management, and authorization on the existing schema. Resource/request/transfer business APIs and complete frontend-backend integration remain unimplemented.
+The backend foundation and SQLite connection/session infrastructure are implemented. Liveness and database readiness are separate checks. Phase 4 implements the approved seven SQLAlchemy models, constraints, indexes, and Alembic migrations. The initial Phase 4 migrations were applied to the existing Docker database after a read-only check confirmed it had no schema objects. The targeted exchange-request correction was tested locally and independently approved; that correction did not access or modify the persistent Docker database. Phase 5 implements authentication, college onboarding, account management, and authorization on the existing schema. Phase 6 implements resource listing management, owner-scoped inventory reads, and local image handling without schema changes. Request/reservation, transfer, analytics, Docker deployment, and complete frontend-backend integration remain unimplemented in their later phases.
 
 ---
 
@@ -350,25 +351,35 @@ Authentication, onboarding, account management, and authorization are implemente
 - No models, tables, migrations, or frontend files were created or changed for Phase 5.
 - Production cookie settings require Secure cookies and independent strong JWT/CSRF secrets. Frontend and backend should use localhost in local development; localhost and 127.0.0.1 do not share cookies.
 
-## Phase 6 – Resource Management: UPCOMING
+## Phase 6 – Resource Management: COMPLETED
 
 ### Objective
 
-Implement resource listing and inventory management.
+Implement the approved resource listing operations, listing visibility and ownership, inventory reads, and image handling without changing the approved database schema.
 
 ### Planned Tasks
 
-- [ ] Implement resource creation.
-- [ ] Implement resource listing.
-- [ ] Implement resource details.
-- [ ] Implement resource editing.
-- [ ] Implement resource status management.
-- [ ] Implement resource categories.
-- [ ] Implement resource image handling.
-- [ ] Implement inventory availability calculations.
-- [ ] Implement inventory reservation logic.
-- [ ] Implement inventory validation.
-- [ ] Test resource management workflows.
+- [x] Create listings using authenticated verified-college ownership and initialize inventory consistently.
+- [x] Browse/search/filter active stocked listings with validated pagination and deterministic SQL queries.
+- [x] View visible listing details and public college identity; scope inactive/depleted visibility to owners.
+- [x] Edit approved descriptive fields only; reject unknown and server-managed fields.
+- [x] Activate/deactivate listings and centrally mark zero-physical-stock resources depleted.
+- [x] Provide verified representatives a separate own-college inventory view with reserved quantities.
+- [x] Upload, serve, replace, and remove validated local JPEG, PNG, and WebP images with safe cleanup.
+- [x] Enforce a streamed upload-route request-body limit before multipart parsing, independent of `Content-Length`, while retaining the 5 MiB image cap.
+- [x] Reject images exceeding the 12-megapixel or 6,000-pixel-per-side processing limits before full decoding.
+- [x] Use conditional image-reference updates so stale concurrent replacements/removals conflict without leaving their new files orphaned.
+- [x] Initialize storage temp-file tracking before directory operations so storage-root failures return the intended controlled error.
+- [x] Preserve inventory balance rules and prevent Phase 6 listing operations from changing quantities.
+- [x] Add isolated resource, authorization, inventory privacy, image safety, and failure-handling tests.
+- [x] Update backend setup/API documentation and `.gitignore` for generated uploads.
+- [x] Verify focused resource tests: 64 passed, including chunked oversized requests without `Content-Length`, image dimensions, stale concurrent image updates, and storage directory failure.
+- [x] Verify the complete backend test suite from `backend`: `..\.venv\Scripts\python.exe -m pytest -q --basetemp=.pytest-phase6-hardening-full` — 133 passed; one existing Starlette/httpx deprecation warning. The workspace-local temp base avoids a Windows permission error in pytest's external default temp cleanup; the temporary test directory was removed after the run.
+- [x] Verify OpenAPI route registration and unchanged seven-table SQLAlchemy metadata.
+
+### Phase 6 Completion Boundary
+
+No models, tables, migrations, request/reservation workflows, transfers, physical stock adjustments, frontend changes, or Docker changes were added for Phase 6. Reservations remain Phase 7; dispatch and receipt-driven inventory changes remain Phase 8. Resource creation initializes `quantity_total` and `quantity_available` equally with zero reserved. The marketplace omits reserved and total quantities; the verified owner inventory view is separately scoped. Tests ran against temporary SQLite databases and image directories, not the persistent development database.
 
 ---
 
@@ -561,4 +572,4 @@ Verify and document the complete CampusCycle V1 application.
 
 ## Current Next Action
 
-**Begin Phase 6 - Resource Management** after the completed Phase 5 handoff. Phase 6 must use persisted-user authorization and college eligibility dependencies; request and transfer workflows remain in their designated later phases.
+**Begin Phase 7 – Requests, Approvals and Reservations** after the completed Phase 6 handoff. Follow the approved request workflows and inventory consistency rules; do not implement transfer workflows early.

@@ -8,6 +8,7 @@ from app.api.v1.router import api_router
 from app.core.config import get_settings
 from app.core.errors import register_error_handlers
 from app.core.logging_config import configure_logging
+from app.core.request_body_limits import ResourceImageBodyLimitMiddleware
 from app.db.session import engine
 
 
@@ -34,6 +35,10 @@ def create_app() -> FastAPI:
         allow_credentials=True,
         allow_methods=["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
         allow_headers=["Authorization", "Content-Type", "X-CSRF-Token"],
+    )
+    application.add_middleware(
+        ResourceImageBodyLimitMiddleware,
+        api_prefix=settings.api_v1_prefix,
     )
     application.include_router(api_router, prefix=settings.api_v1_prefix)
     register_error_handlers(application)

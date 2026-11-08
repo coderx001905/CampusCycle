@@ -1,4 +1,5 @@
 from functools import lru_cache
+from pathlib import Path
 from typing import Literal
 
 from pydantic import Field, model_validator
@@ -39,6 +40,7 @@ class Settings(BaseSettings):
     cookie_domain: str | None = None
     cookie_secure: bool = False
     cookie_samesite: Literal["lax", "strict", "none"] = "lax"
+    resource_image_dir: Path = Path("uploads/resource-images")
 
     @model_validator(mode="after")
     def require_non_development_secret(self) -> "Settings":
