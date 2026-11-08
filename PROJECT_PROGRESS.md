@@ -9,6 +9,7 @@
 - **Phase 4 – Database Development: COMPLETED and independently approved**
 - **Phase 5 - Authentication and Authorization: COMPLETED**
 - **Phase 6 – Resource Management: COMPLETED**
+- **Phase 7 – Requests, Approvals and Reservations: COMPLETED**
 
 ### Current Completion Boundary
 
@@ -16,7 +17,7 @@ Phase 1 is complete as a frontend prototype. It uses demonstration data and loca
 
 Phase 2 is complete as a design deliverable. System architecture, database design, detailed schema, API specifications and design decisions have been reviewed and approved.
 
-The backend foundation and SQLite connection/session infrastructure are implemented. Liveness and database readiness are separate checks. Phase 4 implements the approved seven SQLAlchemy models, constraints, indexes, and Alembic migrations. The initial Phase 4 migrations were applied to the existing Docker database after a read-only check confirmed it had no schema objects. The targeted exchange-request correction was tested locally and independently approved; that correction did not access or modify the persistent Docker database. Phase 5 implements authentication, college onboarding, account management, and authorization on the existing schema. Phase 6 implements resource listing management, owner-scoped inventory reads, and local image handling without schema changes. Request/reservation, transfer, analytics, Docker deployment, and complete frontend-backend integration remain unimplemented in their later phases.
+The backend foundation and SQLite connection/session infrastructure are implemented. Liveness and database readiness are separate checks. Phase 4 implements the approved seven SQLAlchemy models, constraints, indexes, and Alembic migrations. The initial Phase 4 migrations were applied to the existing Docker database after a read-only check confirmed it had no schema objects. The targeted exchange-request correction was tested locally and independently approved; that correction did not access or modify the persistent Docker database. Phase 5 implements authentication, college onboarding, account management, and authorization on the existing schema. Phase 6 implements resource listing management, owner-scoped inventory reads, and local image handling without schema changes. Phase 7 request, approval, reservation, purchase-confirmation, and pre-transfer cancellation workflows, along with approved-quantity and resource-type integrity enforcement, are implemented and verified. Transfer management, analytics, Docker deployment, and complete frontend-backend integration remain unimplemented in their later phases.
 
 ---
 
@@ -383,27 +384,32 @@ No models, tables, migrations, request/reservation workflows, transfers, physica
 
 ---
 
-## Phase 7 – Requests, Approvals and Reservations: UPCOMING
+## Phase 7 – Requests, Approvals and Reservations: COMPLETED
 
 ### Objective
 
-Implement donation, exchange and purchase enquiry workflows.
+Implement donation, exchange and purchase enquiry workflows with approved inventory consistency and college-level authorization rules.
 
 ### Planned Tasks
 
-- [ ] Implement donation requests.
-- [ ] Implement exchange requests.
-- [ ] Implement purchase enquiries.
-- [ ] Implement request listing and filtering.
-- [ ] Implement request approval.
-- [ ] Implement request rejection.
-- [ ] Implement request cancellation.
-- [ ] Implement purchase intention confirmation.
-- [ ] Implement atomic inventory reservations.
-- [ ] Implement partial quantity reservations.
-- [ ] Implement request status transitions.
-- [ ] Implement insufficient inventory handling.
-- [ ] Test request and reservation workflows.
+- [x] Implement donation, exchange, and purchase enquiry submission without reserving inventory.
+- [x] Implement college-scoped request lists, detail access, and pagination.
+- [x] Implement owner-representative approval and rejection, including partial donation approval and recorded rejection reason.
+- [x] Implement atomic full-quantity exchange reservations and no-reservation purchase approval.
+- [x] Implement purchase confirmation, persisted confirmation metadata, and `awaiting_resolution` with HTTP 409 `insufficient_stock` when stock is unavailable.
+- [x] Implement request-level cancellation submission and owner-college review before any transfer row exists; approval releases only the request's reservation, while rejection restores the previous status.
+- [x] Use SQLite `BEGIN IMMEDIATE`, conditional inventory updates, and affected-row checks for write workflows.
+- [x] Add migration `a73c5f91d2e4` for approved quantity, rejection reason, cancellation metadata, foreign keys, and consistency constraints; retain the seven business tables.
+- [x] Add migration `2d1946b08dd1` to enforce approved-quantity database integrity: non-null `approved_quantity` must equal `requested_quantity` for exchange and purchase enquiries, while donation approvals may be partial.
+- [x] Enforce resource transfer-type integrity: reject changing resource transfer_type with HTTP 409 if inventory is reserved or outstanding requests (pending, approved, in_progress, awaiting_resolution) reference it as requested or offered resource.
+- [x] Revalidate listing state on purchase confirmation: immediately verify the resource exists, is active, and is listed for sale before attempting reservation; abort with HTTP 409 without altering request status or setting confirmation metadata if invalid.
+- [x] Verify populated migration upgrade, downgrade, and re-upgrade on isolated temporary SQLite databases across both migrations, including rejection of invalid historical data.
+- [x] Verify competing reservations with independent sessions: one 7-unit reservation succeeds from 10 available; the other conflicts; final inventory is 3 available and 7 reserved.
+- [x] Run complete backend regression suite: 173 passed, one Starlette/httpx deprecation warning.
+
+### Phase 7 Completion Boundary
+
+Phase 7 implements request, approval/rejection, reservation, purchase confirmation, and request-level pre-transfer cancellation workflows, with database-level integrity enforcement for approved quantities across donation, exchange, and purchase enquiries (migrations `a73c5f91d2e4` and `2d1946b08dd1`). Resource transfer-type changes are prevented whenever inventory is reserved or outstanding requests reference the resource, and purchase confirmation revalidates listing existence, active status, and sale transfer type before reserving stock. All migration and automated tests ran against isolated temporary SQLite databases; the persistent development database and Docker were not accessed. No transfer/dispatch/receipt workflow, frontend integration, deployment configuration, or additional business table was added. The existing API blueprint now documents the required rejection reason and request-level cancellation contract, including the stored rejection reason field. The complete V1 application is not complete; Phase 8 remains upcoming.
 
 ---
 
@@ -572,4 +578,4 @@ Verify and document the complete CampusCycle V1 application.
 
 ## Current Next Action
 
-**Begin Phase 7 – Requests, Approvals and Reservations** after the completed Phase 6 handoff. Follow the approved request workflows and inventory consistency rules; do not implement transfer workflows early.
+**Begin Phase 8 – Logistics and Transfer Tracking** after the completed Phase 7 handoff and database integrity verification. Follow the approved transfer workflows, partial transfers, dispatch, receipt confirmation, and dispute rules; do not implement frontend integration early.

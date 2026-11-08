@@ -7,7 +7,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, joinedload
 
 from app.core.authorization import require_verified_college
-from app.models import Resource, User
+from app.models import Request, Resource, User
 from app.schemas.resources import ResourceCreate
 from app.core.config import Settings
 from app.services.resource_images import (
@@ -155,6 +155,30 @@ def get_owned_resource(db: Session, *, resource_id: int, user: User) -> Resource
 
 
 def update_resource(db: Session, *, resource: Resource, changes: dict[str, object]) -> Resource:
+    new_transfer_type = changes.get("transfer_type")
+    if new_transfer_type is not None and new_transfer_type != resource.transfer_type:
+        if resource.quantity_reserved > 0:
+            raise HTTPException(
+                status_code=409,
+                detail="The transfer type cannot be changed while inventory is reserved.",
+            )
+        outstanding_statuses = ("pending", "approved", "in_progress", "awaiting_resolution")
+        has_outstanding = db.scalar(
+            select(Request.id)
+            .where(
+                or_(
+                    Request.resource_id == resource.id,
+                    Request.offered_resource_id == resource.id,
+                ),
+                Request.status.in_(outstanding_statuses),
+            )
+            .limit(1)
+        )
+        if has_outstanding is not None:
+            raise HTTPException(
+                status_code=409,
+                detail="The transfer type cannot be changed while outstanding requests depend on this resource.",
+            )
     for field, value in changes.items():
         setattr(resource, field, value)
     synchronize_depleted_status(resource)

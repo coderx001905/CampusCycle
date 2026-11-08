@@ -131,9 +131,21 @@ Suggested list filters: `category`, `transfer_type`, `condition`, `college_id` (
 | GET | `/requests/received` | Requests received for resources owned by caller's college |
 | GET | `/requests/{request_id}` | Either participating college, subject to field-level access |
 | POST | `/requests/{request_id}/approve` | Authorized representative of resource-owning college |
-| POST | `/requests/{request_id}/reject` | Authorized representative of resource-owning college |
-| POST | `/requests/{request_id}/cancel` | Requesting college; policy-dependent |
+| POST | `/requests/{request_id}/reject` | Authorized representative of resource-owning college; body requires a non-empty `reason` (maximum 2,000 characters) |
+| POST | `/requests/{request_id}/cancel` | Requesting college submits a pre-transfer cancellation request with a non-empty `reason` |
+| POST | `/requests/{request_id}/cancellation-decision` | Resource-owning college representative approves or rejects a pending request-level cancellation |
 | POST | `/requests/{request_id}/purchase-confirmation` | Buyer confirms purchase intent; reservation attempted at this point |
+
+Request listing endpoints use `page` (default `1`) and `page_size` (default `20`, maximum `100`). Detail access is limited to the requesting college and the college owning the requested resource. Approval accepts optional `approved_quantity`; donation approvals may be partial, while exchange and purchase approvals require the full requested quantity. Responses include review, approval, rejection, purchase-confirmation, and request-cancellation metadata.
+
+### Request approval, rejection, and cancellation
+
+- Only a verified College Representative of the resource-owning college may approve or reject a pending request. Platform Admin does not perform routine request review.
+- Approval records the reviewer, timestamp, and approved quantity. Donation reservations may be partial. Exchange approval reserves the complete requested and offered quantities atomically. Purchase enquiry approval does not reserve inventory.
+- Rejection requires a reason. The existing seven-table design did not contain a rejection-reason field; Phase 7 adds nullable `requests.rejection_reason`, stores it on rejection, and leaves rejected requests closed.
+- Request-level cancellation is allowed only before any transfer row exists. Submission records the requesting representative, timestamp, reason, and previous status. Review is recorded as metadata on the existing request row; there is no new cancellation table or new request status.
+- A cancellation submission does not release stock. Approval sets the request to `cancelled` and releases only its recorded reservation (including both sides of an approved exchange); rejection restores the prior status and retains reservations. Cancellation metadata and decisions are retained.
+- Cancellation cannot be submitted more than once for a request. Transfer-row cancellation remains a separate Phase 8 workflow.
 
 ### Exchange approval behavior
 

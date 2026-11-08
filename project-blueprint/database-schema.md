@@ -71,6 +71,7 @@ Constraints:
 - `quantity_reserved <= quantity_total`.
 - Resource owner college must be eligible under the verification policy to create/manage transactional listings.
 - `sale` means purchase enquiry only; CampusCycle does not collect payment.
+- Resource `transfer_type` cannot be changed while `quantity_reserved > 0` or while outstanding requests (`pending`, `approved`, `in_progress`, `awaiting_resolution`) reference it as requested or offered resource.
 
 ## 4. `requests`
 
@@ -86,11 +87,20 @@ Constraints:
 | `request_type` | VARCHAR(30) | No | `donation`, `exchange`, `purchase_enquiry` |
 | `purpose` | TEXT | No | Reason for request |
 | `message` | TEXT | Yes | Additional message |
+| `rejection_reason` | TEXT | Yes | Reason recorded by the resource-owning representative when rejecting |
+| `approved_quantity` | INTEGER | Yes | Approved amount; positive and no greater than requested quantity (must equal requested quantity for exchange and purchase enquiry; may be partial for donation) |
 | `status` | VARCHAR(30) | No | Proposed values below |
 | `reviewed_by_user_id` | INTEGER | Yes | FK to reviewer |
 | `reviewed_at` | DATETIME | Yes | Review timestamp |
 | `purchase_intent_confirmed_at` | DATETIME | Yes | Set when buyer confirms intention |
 | `purchase_confirmed_by_user_id` | INTEGER | Yes | FK to confirming user |
+| `cancellation_requested_by_user_id` | INTEGER | Yes | FK to representative submitting a pre-transfer cancellation request |
+| `cancellation_requested_at` | DATETIME | Yes | Cancellation submission timestamp |
+| `cancellation_reason` | TEXT | Yes | Required when a request-level cancellation is submitted |
+| `cancellation_reviewed_by_user_id` | INTEGER | Yes | FK to resource-owning representative reviewing cancellation |
+| `cancellation_reviewed_at` | DATETIME | Yes | Cancellation decision timestamp |
+| `cancellation_previous_status` | VARCHAR(30) | Yes | Status restored if cancellation is rejected |
+| `cancellation_decision` | VARCHAR(20) | Yes | `approved` or `rejected` |
 | `created_at` | DATETIME | No | Creation time |
 | `updated_at` | DATETIME | No | Last update |
 
@@ -110,8 +120,13 @@ Constraints / validation:
 - The offered resource must belong to the requesting college.
 - The requested resource must belong to a different college.
 - Purchase enquiry approval alone does not reserve stock. Reservation is attempted on purchase-intent confirmation.
+- Immediately prior to reservation, purchase confirmation revalidates that the requested resource exists, is active, and is listed for sale; if not, confirmation is rejected with HTTP 409 and rolls back without writing confirmation metadata or altering request status.
 - On insufficient stock at purchase confirmation, no reservation is made and the request remains open in `awaiting_resolution`.
 - `awaiting_resolution` must not be treated as `cancelled` or `completed`.
+- `approved_quantity`, when present, is positive and no greater than `requested_quantity`; for exchange and purchase enquiry requests it must equal `requested_quantity`, while donation requests permit partial approval.
+- Cancellation submission and decision fields are stored on the request row; no additional business table or request status is introduced.
+- Request-level cancellation is allowed only before transfer rows exist; approved cancellation releases the reservation associated with that request.
+- Rejection reason and cancellation submission/review metadata are constrained for consistent paired actor/timestamp/decision values.
 
 ## 5. `transfers`
 
