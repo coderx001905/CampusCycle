@@ -71,6 +71,7 @@ Constraints:
 - `quantity_reserved <= quantity_total`.
 - Resource owner college must be eligible under the verification policy to create/manage transactional listings.
 - `sale` means purchase enquiry only; CampusCycle does not collect payment.
+- Resource `transfer_type` cannot be changed while `quantity_reserved > 0` or while outstanding requests (`pending`, `approved`, `in_progress`, `awaiting_resolution`) reference it as requested or offered resource.
 
 ## 4. `requests`
 
@@ -119,6 +120,7 @@ Constraints / validation:
 - The offered resource must belong to the requesting college.
 - The requested resource must belong to a different college.
 - Purchase enquiry approval alone does not reserve stock. Reservation is attempted on purchase-intent confirmation.
+- Immediately prior to reservation, purchase confirmation revalidates that the requested resource exists, is active, and is listed for sale; if not, confirmation is rejected with HTTP 409 and rolls back without writing confirmation metadata or altering request status.
 - On insufficient stock at purchase confirmation, no reservation is made and the request remains open in `awaiting_resolution`.
 - `awaiting_resolution` must not be treated as `cancelled` or `completed`.
 - `approved_quantity`, when present, is positive and no greater than `requested_quantity`; for exchange and purchase enquiry requests it must equal `requested_quantity`, while donation requests permit partial approval.

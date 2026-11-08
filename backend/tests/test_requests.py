@@ -367,3 +367,53 @@ def test_concurrent_approvals_use_independent_sqlite_sessions(request_context):
     with ctx["sessions"]() as db:
         statuses = list(db.scalars(select(Request.status).where(Request.id.in_(reqs))))
         assert sorted(statuses) == ["approved", "pending"]
+
+
+def test_purchase_confirmation_revalidates_resource_active_and_sale_type(request_context):
+    ctx = request_context
+    # 6. Reject confirmation when the resource is no longer active
+    sale_stock = add_resource(ctx, kind="sale", quantity=5)
+    rid1 = make_request(ctx, kind="purchase_enquiry", resource_id=sale_stock, requested=3)
+    ctx["client"].post(f"/api/v1/requests/{rid1}/approve", headers=auth(ctx, "owner"), json={})
+    assert quantities(ctx, sale_stock) == (5, 5, 0)
+
+    # Deactivate the resource after approval
+    ctx["client"].patch(f"/api/v1/resources/{sale_stock}/status", headers=auth(ctx, "owner"), json={"status": "inactive"})
+
+    # Attempt confirmation
+    resp1 = ctx["client"].post(f"/api/v1/requests/{rid1}/purchase-confirmation", headers=auth(ctx, "buyer"))
+    assert resp1.status_code == 409
+    assert resp1.json()["error"]["code"] == "resource_unavailable"
+
+    # 8. Verify failed confirmation leaves inventory unchanged
+    assert quantities(ctx, sale_stock) == (5, 5, 0)
+
+    # 9. Verify failed confirmation does not set metadata or alter status
+    with ctx["sessions"]() as db:
+        req1 = db.get(Request, rid1)
+        assert req1.status == "approved"
+        assert req1.purchase_intent_confirmed_at is None
+        assert req1.purchase_confirmed_by_user_id is None
+
+    # 7. Reject confirmation when the resource is no longer listed as sale
+    sale_stock2 = add_resource(ctx, kind="sale", quantity=5)
+    rid2 = make_request(ctx, kind="purchase_enquiry", resource_id=sale_stock2, requested=3)
+    ctx["client"].post(f"/api/v1/requests/{rid2}/approve", headers=auth(ctx, "owner"), json={})
+
+    # Mutate resource in DB directly to simulate transfer_type change
+    with ctx["sessions"].begin() as db:
+        db.get(Resource, sale_stock2).transfer_type = "donation"
+
+    resp2 = ctx["client"].post(f"/api/v1/requests/{rid2}/purchase-confirmation", headers=auth(ctx, "buyer"))
+    assert resp2.status_code == 409
+    assert resp2.json()["error"]["code"] == "resource_unavailable"
+
+    # 8. Inventory unchanged
+    assert quantities(ctx, sale_stock2) == (5, 5, 0)
+
+    # 9. No confirmation metadata or status change
+    with ctx["sessions"]() as db:
+        req2 = db.get(Request, rid2)
+        assert req2.status == "approved"
+        assert req2.purchase_intent_confirmed_at is None
+        assert req2.purchase_confirmed_by_user_id is None

@@ -236,6 +236,9 @@ def confirm_purchase(db: Session, *, actor: User, request_id: int) -> tuple[Requ
             _rollback_error(db, 409, "invalid_request_state", "Only approved purchase enquiries can be confirmed.")
         if request.purchase_intent_confirmed_at is not None:
             _rollback_error(db, 409, "already_confirmed", "Purchase intent has already been confirmed.")
+        resource = db.get(Resource, request.resource_id)
+        if resource is None or resource.status != "active" or resource.transfer_type != "sale":
+            _rollback_error(db, 409, "resource_unavailable", "The requested resource is no longer active for sale.")
         quantity = request.approved_quantity or request.requested_quantity
         request.purchase_intent_confirmed_at = _now()
         request.purchase_confirmed_by_user_id = current.id

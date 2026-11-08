@@ -16,7 +16,7 @@ from app.core.config import Settings, get_settings
 from app.core.security import create_access_token
 from app.db.session import create_database_engine, get_db
 from app.main import create_app
-from app.models import Base, College, Resource, User
+from app.models import Base, College, Request, Resource, User
 from app.services.resource_images import (
     ImageUploadError,
     MAX_IMAGE_BYTES,
@@ -295,6 +295,101 @@ def test_resource_edit_enforces_owner_role_and_valid_values(resource_context):
     assert context["client"].patch(url, headers=headers(context), json={"indicative_price": -1}).status_code == 422
     assert context["client"].patch(url, headers=headers(context), json={"name": None}).status_code == 422
     assert context["client"].patch(url, headers=headers(context), json={}).status_code == 422
+
+
+def test_transfer_type_change_rejected_when_referenced_by_outstanding_request(resource_context):
+    context = resource_context
+    res_id = create_resource(context, transfer_type="sale").json()["data"]["id"]
+    with context["sessions"].begin() as db:
+        req = Request(
+            resource_id=res_id,
+            requesting_college_id=context["college_ids"]["other"],
+            requested_by_user_id=context["user_ids"]["other"],
+            requested_quantity=2,
+            request_type="purchase_enquiry",
+            purpose="Need books for class",
+            status="pending",
+        )
+        db.add(req)
+
+    url = f"/api/v1/resources/{res_id}"
+    resp = context["client"].patch(url, headers=headers(context), json={"transfer_type": "donation"})
+    assert resp.status_code == 409
+    assert "outstanding requests" in resp.json()["error"]["message"]
+
+    # Permit unrelated resource-field updates even when a request references the resource
+    unrelated = context["client"].patch(url, headers=headers(context), json={"name": "Updated Title", "description": "New description"})
+    assert unrelated.status_code == 200
+    assert unrelated.json()["data"]["name"] == "Updated Title"
+
+    # Also permit update if transfer_type is sent unchanged
+    same_type = context["client"].patch(url, headers=headers(context), json={"transfer_type": "sale", "name": "Same Type Title"})
+    assert same_type.status_code == 200
+    assert same_type.json()["data"]["name"] == "Same Type Title"
+
+
+def test_transfer_type_change_rejected_when_referenced_as_offered_resource(resource_context):
+    context = resource_context
+    offered_res_id = create_resource(context, transfer_type="exchange").json()["data"]["id"]
+    target_res_id = create_resource(context, role="other", transfer_type="exchange").json()["data"]["id"]
+
+    with context["sessions"].begin() as db:
+        req = Request(
+            resource_id=target_res_id,
+            requesting_college_id=context["college_ids"]["owner"],
+            requested_by_user_id=context["user_ids"]["owner"],
+            offered_resource_id=offered_res_id,
+            requested_quantity=1,
+            offered_quantity=1,
+            request_type="exchange",
+            purpose="Exchange textbook",
+            status="pending",
+        )
+        db.add(req)
+
+    url = f"/api/v1/resources/{offered_res_id}"
+    resp = context["client"].patch(url, headers=headers(context), json={"transfer_type": "donation"})
+    assert resp.status_code == 409
+    assert "outstanding requests" in resp.json()["error"]["message"]
+
+
+def test_transfer_type_change_rejected_when_quantity_reserved(resource_context):
+    context = resource_context
+    res_id = create_resource(context, transfer_type="donation").json()["data"]["id"]
+    with context["sessions"].begin() as db:
+        res = db.get(Resource, res_id)
+        res.quantity_reserved = 2
+        res.quantity_available = res.quantity_total - 2
+
+    url = f"/api/v1/resources/{res_id}"
+    resp = context["client"].patch(url, headers=headers(context), json={"transfer_type": "sale"})
+    assert resp.status_code == 409
+    assert "reserved" in resp.json()["error"]["message"]
+
+
+def test_transfer_type_change_permitted_without_outstanding_requests_or_reservations(resource_context):
+    context = resource_context
+    res_id = create_resource(context, transfer_type="donation").json()["data"]["id"]
+
+    # Even if historical inactive requests (completed/rejected/cancelled) exist
+    with context["sessions"].begin() as db:
+        for status in ("rejected", "completed", "cancelled"):
+            db.add(Request(
+                resource_id=res_id,
+                requesting_college_id=context["college_ids"]["other"],
+                requested_by_user_id=context["user_ids"]["other"],
+                requested_quantity=1,
+                request_type="donation",
+                purpose="Historical request",
+                status=status,
+            ))
+
+    url = f"/api/v1/resources/{res_id}"
+    resp = context["client"].patch(url, headers=headers(context), json={"transfer_type": "sale"})
+    assert resp.status_code == 200
+    assert resp.json()["data"]["transfer_type"] == "sale"
+    with context["sessions"]() as db:
+        assert db.get(Resource, res_id).transfer_type == "sale"
 
 
 def test_status_changes_preserve_quantities_and_enforce_ownership(resource_context):
