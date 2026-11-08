@@ -189,7 +189,7 @@ def test_corrective_migration_from_previous_head_preserves_records_and_foreign_k
         assert {column["name"] for column in inspector.get_columns("requests")} == set(
             Base.metadata.tables["requests"].columns.keys()
         )
-        assert len(inspector.get_foreign_keys("requests")) == 6
+        assert len(inspector.get_foreign_keys("requests")) == 8
         assert {index["name"] for index in inspector.get_indexes("requests")} == {
             "ix_requests_resource_id_status",
             "ix_requests_requesting_college_id_status",
@@ -219,7 +219,7 @@ def test_corrective_migration_from_previous_head_preserves_records_and_foreign_k
             assert connection.execute(text(
                 "SELECT token_hash, jti FROM refresh_tokens WHERE id=1"
             )).one() == ("existing-token-hash", "existing-jti")
-            assert connection.execute(text("SELECT version_num FROM alembic_version")).scalar_one() == "c81f23a7d940"
+            assert connection.execute(text("SELECT version_num FROM alembic_version")).scalar_one() == "a73c5f91d2e4"
             assert connection.exec_driver_sql("PRAGMA foreign_keys").scalar_one() == 1
             assert connection.execute(text("PRAGMA foreign_key_check")).all() == []
 
@@ -231,6 +231,23 @@ def test_corrective_migration_from_previous_head_preserves_records_and_foreign_k
                 ))
     finally:
         engine.dispose()
+
+    downgrade = _run_alembic(backend_dir, database, "downgrade", "c81f23a7d940")
+    assert downgrade.returncode == 0, downgrade.stdout + downgrade.stderr
+    engine = create_database_engine(database_url)
+    try:
+        with engine.connect() as connection:
+            columns = {column["name"] for column in inspect(connection).get_columns("requests")}
+            assert "approved_quantity" not in columns
+            assert "rejection_reason" not in columns
+            assert connection.execute(text("SELECT count(*) FROM requests")).scalar_one() == 2
+            assert connection.execute(text("SELECT version_num FROM alembic_version")).scalar_one() == "c81f23a7d940"
+            assert connection.exec_driver_sql("PRAGMA foreign_key_check").all() == []
+    finally:
+        engine.dispose()
+
+    reupgrade = _run_alembic(backend_dir, database, "upgrade", "head")
+    assert reupgrade.returncode == 0, reupgrade.stdout + reupgrade.stderr
 
 
 def test_corrective_migration_runs_from_fresh_database(tmp_path) -> None:
@@ -246,8 +263,39 @@ def test_corrective_migration_runs_from_fresh_database(tmp_path) -> None:
             "transfers", "transfer_status_history", "refresh_tokens",
         }
         with engine.connect() as connection:
-            assert connection.execute(text("SELECT version_num FROM alembic_version")).scalar_one() == "c81f23a7d940"
+            assert connection.execute(text("SELECT version_num FROM alembic_version")).scalar_one() == "a73c5f91d2e4"
             assert connection.exec_driver_sql("PRAGMA foreign_keys").scalar_one() == 1
             assert connection.execute(text("PRAGMA foreign_key_check")).all() == []
+    finally:
+        engine.dispose()
+
+
+def test_phase_seven_migration_from_current_head_preserves_populated_database(tmp_path) -> None:
+    backend_dir = Path(__file__).resolve().parents[1]
+    database = tmp_path / "phase-seven-current-head.sqlite3"
+    database_url = f"sqlite:///{database.as_posix()}"
+    previous = _run_alembic(backend_dir, database, "upgrade", "c81f23a7d940")
+    assert previous.returncode == 0, previous.stdout + previous.stderr
+    _seed_previous_head_records(database_url)
+
+    upgrade = _run_alembic(backend_dir, database, "upgrade", "head")
+    assert upgrade.returncode == 0, upgrade.stdout + upgrade.stderr
+    engine = create_database_engine(database_url)
+    try:
+        inspector = inspect(engine)
+        assert set(inspector.get_table_names()) == {
+            "alembic_version", "colleges", "users", "resources", "requests",
+            "transfers", "transfer_status_history", "refresh_tokens",
+        }
+        assert {column["name"] for column in inspector.get_columns("requests")} == set(
+            Base.metadata.tables["requests"].columns.keys()
+        )
+        with engine.connect() as connection:
+            assert connection.execute(text("SELECT version_num FROM alembic_version")).scalar_one() == "a73c5f91d2e4"
+            assert connection.execute(text("SELECT count(*) FROM requests")).scalar_one() == 2
+            assert connection.execute(text("SELECT count(*) FROM transfers")).scalar_one() == 1
+            assert connection.execute(text("SELECT rejection_reason, approved_quantity, cancellation_requested_at FROM requests WHERE id=1")).one() == (None, None, None)
+            assert connection.exec_driver_sql("PRAGMA foreign_keys").scalar_one() == 1
+            assert connection.exec_driver_sql("PRAGMA foreign_key_check").all() == []
     finally:
         engine.dispose()

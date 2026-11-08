@@ -1,6 +1,6 @@
 # CampusCycle Backend
 
-The backend is a FastAPI application using SQLAlchemy 2.x, SQLite, and Alembic. It implements the approved seven-table persistence schema, Phase 5 authentication and college/user management, and Phase 6 resource listings, owner-scoped inventory reads, and local resource images. Requests/reservations, transfers, analytics, and frontend-backend integration remain later phases.
+The backend is a FastAPI application using SQLAlchemy 2.x, SQLite, and Alembic. It implements the approved seven-table persistence schema, Phase 5 authentication and college/user management, Phase 6 resource listings and local resource images, and Phase 7 request approvals and inventory reservations. Transfers, analytics, and frontend-backend integration remain later phases.
 
 ## Local development
 
@@ -57,6 +57,24 @@ Production must use HTTPS (`CC_COOKIE_SECURE=true`). Select `CC_COOKIE_SAMESITE=
 Profile update schemas accept only a user's name/email and a college's name/address/city/contact email. They reject role, college ownership, active state, verification status, and password-hash fields. Password changes are not part of the approved Phase 5 endpoint contract. College representatives can access only their own college and its representative accounts; Platform Admin has the approved global college/account management scope. College status changes are recorded through the existing `updated_at` field and application log; no history table was added because none is approved.
 
 The approved schema does not specify which individual college profile fields are editable. The implementation limits updates to the existing college identity/contact columns and excludes verification/ownership fields. Public registration does not auto-login because the API contract does not define an issued-session response; login is a separate step.
+
+## Phase 7 request and reservation workflows
+
+Request endpoints use the `/api/v1` prefix and return the established success/error envelopes. Only verified college representatives may transact; request identity comes from the authenticated account, and request details are visible only to the requesting college and the college owning the requested resource.
+
+| Method and path | Purpose |
+|---|---|
+| `POST /requests` | Submit a donation, exchange, or purchase enquiry without reserving stock. |
+| `GET /requests/mine` | Paginated requests submitted by the caller's college. |
+| `GET /requests/received` | Paginated requests for resources owned by the caller's college. |
+| `GET /requests/{request_id}` | Retrieve a request as one of its participating colleges. |
+| `POST /requests/{request_id}/approve` | Approve a pending request; donation approval can be partial. |
+| `POST /requests/{request_id}/reject` | Reject a pending request with a required reason. |
+| `POST /requests/{request_id}/purchase-confirmation` | Confirm an approved purchase enquiry and reserve its approved quantity. |
+| `POST /requests/{request_id}/cancel` | Submit a request-level cancellation before transfer rows exist. |
+| `POST /requests/{request_id}/cancellation-decision` | Resource-owning college approves or rejects a cancellation. |
+
+SQLite write operations acquire `BEGIN IMMEDIATE`; inventory uses conditional updates and row-count checks. Exchange approval reserves both resources in one transaction. Purchase approval does not reserve stock; confirmation reserves it, or persists `awaiting_resolution` and confirmation metadata before returning HTTP 409 `insufficient_stock`. Request cancellation is recorded on the request row; it releases only that request's reservation after approval and before any transfer exists. Rejection and cancellation reasons are stored on the existing `requests` table. Phase 7 migration `a73c5f91d2e4` adds these request fields and constraints without adding a business table. Tests use isolated temporary SQLite databases; no migration was applied to the persistent local database.
 
 ## Database schema
 

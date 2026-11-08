@@ -9,6 +9,14 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 logger = logging.getLogger(__name__)
 
 
+class APIError(StarletteHTTPException):
+    """HTTP error carrying a stable application error code."""
+
+    def __init__(self, status_code: int, code: str, message: str):
+        super().__init__(status_code=status_code, detail=message)
+        self.error_code = code
+
+
 def _error_payload(code: str, message: str, details: list[dict[str, Any]] | None = None) -> dict[str, Any]:
     return {
         "error": {
@@ -52,7 +60,7 @@ async def http_error_handler(
         status_code=exc.status_code,
         headers=exc.headers,
         content=_error_payload(
-            code_by_status.get(exc.status_code, "http_error"),
+            getattr(exc, "error_code", code_by_status.get(exc.status_code, "http_error")),
             detail,
         ),
     )
