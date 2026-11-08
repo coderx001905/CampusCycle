@@ -74,6 +74,46 @@ def provision_platform_admin(db: Session, *, name: str, email: str, password: st
         raise
 
 
+def reset_platform_admin_password(db: Session, *, new_password: str) -> User:
+    """Reset the password of the sole Platform Admin and revoke all active refresh tokens."""
+    try:
+        if db.bind is not None and db.bind.dialect.name == "sqlite":
+            db.connection().exec_driver_sql("BEGIN IMMEDIATE")
+        else:
+            db.begin()
+
+        admins = db.scalars(select(User).where(User.role == "platform_admin")).all()
+        if not admins:
+            db.rollback()
+            raise ValueError("No Platform Admin account exists; use 'provision-admin' to create one.")
+        if len(admins) > 1:
+            db.rollback()
+            raise ValueError("Multiple Platform Admin accounts found; manual intervention required.")
+
+        admin = admins[0]
+        if not admin.is_active:
+            db.rollback()
+            raise ValueError("The Platform Admin account is inactive; cannot reset password.")
+
+        now = _now()
+        admin.password_hash = hash_password(new_password)
+        admin.updated_at = now
+
+        db.execute(
+            update(RefreshToken)
+            .where(RefreshToken.user_id == admin.id, RefreshToken.revoked_at.is_(None))
+            .values(revoked_at=now)
+            .execution_options(synchronize_session=False)
+        )
+
+        db.commit()
+        db.refresh(admin)
+        return admin
+    except Exception:
+        db.rollback()
+        raise
+
+
 def issue_refresh_token(db: Session, *, user: User, settings: Settings,
                         user_agent: str | None = None, ip_address: str | None = None,
                         family_id: str | None = None) -> tuple[str, RefreshToken]:
