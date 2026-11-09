@@ -3,20 +3,31 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
+    image: campuscycle-backend:latest
+    restart: unless-stopped
     ports:
-      - "127.0.0.1:8000:8000"
+      - "${CC_BACKEND_PORT:-127.0.0.1:8000}:8000"
     environment:
       CC_APP_NAME: CampusCycle API
       CC_ENVIRONMENT: ${CC_ENVIRONMENT:-development}
-      CC_LOG_LEVEL: INFO
+      CC_LOG_LEVEL: ${CC_LOG_LEVEL:-INFO}
       CC_API_V1_PREFIX: /api/v1
-      CC_CORS_ORIGINS: '["http://localhost:5173","http://127.0.0.1:5173"]'
+      CC_CORS_ORIGINS: ${CC_CORS_ORIGINS:-["http://localhost:5173","http://127.0.0.1:5173","http://localhost","http://127.0.0.1"]}
       CC_DATABASE_URL: sqlite:////data/campuscycle.db
+      CC_RESOURCE_IMAGE_DIR: /data/uploads/resource-images
       CC_JWT_SECRET_KEY: ${CC_JWT_SECRET_KEY:-local-compose-development-only-change-me}
       CC_JWT_ALGORITHM: HS256
       CC_JWT_ISSUER: campuscycle-api
       CC_JWT_AUDIENCE: campuscycle-client
       CC_ACCESS_TOKEN_EXPIRE_MINUTES: 15
+      CC_REFRESH_TOKEN_EXPIRE_DAYS: 7
+      CC_CSRF_SECRET_KEY: ${CC_CSRF_SECRET_KEY:-local-compose-development-only-csrf-change-me}
+      CC_REFRESH_COOKIE_NAME: campuscycle_refresh
+      CC_CSRF_COOKIE_NAME: campuscycle_csrf
+      CC_AUTH_COOKIE_PATH: /api/v1/auth
+      CC_CSRF_COOKIE_PATH: /
+      CC_COOKIE_SECURE: ${CC_COOKIE_SECURE:-false}
+      CC_COOKIE_SAMESITE: lax
     volumes:
       - campuscycle_data:/data
     healthcheck:
@@ -25,10 +36,28 @@ services:
         - python
         - -c
         - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/v1/health', timeout=3)"
-      interval: 15s
+      interval: 10s
       timeout: 5s
       retries: 3
       start_period: 10s
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    image: campuscycle-frontend:latest
+    restart: unless-stopped
+    ports:
+      - "${CC_FRONTEND_PORT:-5173}:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1/healthz > /dev/null || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
 
 volumes:
   campuscycle_data:
