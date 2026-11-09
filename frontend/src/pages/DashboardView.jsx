@@ -16,6 +16,7 @@ import { useAuth } from '../context/AuthContext';
 import { resourcesApi } from '../api/resources';
 import { requestsApi } from '../api/requests';
 import { transfersApi } from '../api/transfers';
+import { analyticsApi } from '../api/analytics';
 
 export const DashboardView = ({ onNavigate, onOpenLogin, onOpenRegister }) => {
   const { user, college, isAuthenticated, isPlatformAdmin, isCollegeRep } = useAuth();
@@ -24,6 +25,7 @@ export const DashboardView = ({ onNavigate, onOpenLogin, onOpenRegister }) => {
     pendingRequests: 0,
     activeTransfers: 0,
     inventoryAvailable: 0,
+    trackedColleges: 0,
   });
   const [recentRequests, setRecentRequests] = useState([]);
   const [recentTransfers, setRecentTransfers] = useState([]);
@@ -37,55 +39,68 @@ export const DashboardView = ({ onNavigate, onOpenLogin, onOpenRegister }) => {
 
     const loadDashboardData = async () => {
       try {
-        const promises = [resourcesApi.listResources({ page_size: 1 })];
+        const promises = [
+          analyticsApi.getSummary().catch((err) => {
+            console.warn('Analytics summary unavailable, falling back to resource list:', err);
+            return null;
+          }),
+        ];
 
         if (isCollegeRep) {
           promises.push(
-            requestsApi.getReceived(1, 5).catch(() => ({ data: { items: [], total: 0 } })),
-            requestsApi.getMine(1, 5).catch(() => ({ data: { items: [], total: 0 } })),
-            transfersApi.listTransfers({ page_size: 5 }).catch(() => ({ data: { items: [], total: 0 } })),
-            resourcesApi.getMyInventory().catch(() => ({ data: { items: [], total: 0 } }))
+            requestsApi.getReceived(1, 4).catch(() => ({ data: { items: [], total: 0 } })),
+            transfersApi.listTransfers({ page_size: 4 }).catch(() => ({ data: { items: [], total: 0 } }))
           );
         } else if (isPlatformAdmin) {
           promises.push(
             Promise.resolve({ data: { items: [], total: 0 } }),
-            Promise.resolve({ data: { items: [], total: 0 } }),
-            transfersApi.listTransfers({ page_size: 5 }).catch(() => ({ data: { items: [], total: 0 } })),
-            Promise.resolve({ data: { items: [], total: 0 } })
+            transfersApi.listTransfers({ page_size: 4 }).catch(() => ({ data: { items: [], total: 0 } }))
           );
         }
 
-        const [resList, recReq, mineReq, transList, invList] = await Promise.all(promises);
+        const [summaryRes, recReq, transList] = await Promise.all(promises);
 
         if (!mounted) return;
 
-        const totalActiveResources = resList?.data?.total || 0;
-        const totalPendingRequests =
-          (recReq?.data?.items?.filter((r) => r.status === 'pending').length || 0) +
-          (mineReq?.data?.items?.filter((r) => r.status === 'pending').length || 0);
+        if (summaryRes?.data) {
+          const summary = summaryRes.data;
+          const resMetrics = summary.resources || {};
+          const reqMetrics = summary.requests || {};
+          const transMetrics = summary.transfers || {};
+          const colMetrics = summary.colleges || {};
 
-        const transfers = transList?.data?.items || [];
-        const activeTransfersCount = transfers.filter(
-          (t) => t.status === 'in_transit' || t.status === 'pending_dispatch' || t.status === 'disputed'
-        ).length;
+          const activeTransfersCount =
+            (transMetrics.preparing_transfers || 0) +
+            (transMetrics.dispatched_transfers || 0) +
+            (transMetrics.partially_received_transfers || 0);
 
-        const inventoryItems = invList?.data?.items || [];
-        const totalAvailableUnits = inventoryItems.reduce(
-          (sum, item) => sum + (item.quantity_available || 0),
-          0
-        );
+          setStats({
+            activeListings: resMetrics.active_listings ?? resMetrics.total_listings ?? 0,
+            pendingRequests: reqMetrics.pending_requests ?? 0,
+            activeTransfers: activeTransfersCount,
+            inventoryAvailable: resMetrics.available_quantity ?? 0,
+            trackedColleges: colMetrics.total_colleges ?? 0,
+          });
+        } else {
+          // Fallback if summary endpoint failed
+          const resList = await resourcesApi.listResources({ page_size: 1 }).catch(() => null);
+          const transfers = transList?.data?.items || [];
+          const activeTransfersCount = transfers.filter(
+            (t) => t.status === 'in_transit' || t.status === 'pending_dispatch' || t.status === 'disputed'
+          ).length;
 
-        setStats({
-          activeListings: totalActiveResources,
-          pendingRequests: totalPendingRequests,
-          activeTransfers: activeTransfersCount,
-          inventoryAvailable: totalAvailableUnits,
-        });
+          setStats({
+            activeListings: resList?.data?.total || 0,
+            pendingRequests: recReq?.data?.items?.filter((r) => r.status === 'pending').length || 0,
+            activeTransfers: activeTransfersCount,
+            inventoryAvailable: 0,
+            trackedColleges: 0,
+          });
+        }
 
         // Set recent items
-        const combinedRequests = [...(recReq?.data?.items || []), ...(mineReq?.data?.items || [])].slice(0, 4);
-        setRecentRequests(combinedRequests);
-        setRecentTransfers(transfers.slice(0, 4));
+        setRecentRequests(recReq?.data?.items || []);
+        setRecentTransfers(transList?.data?.items || []);
       } catch (err) {
         console.error('Failed to load dashboard data:', err);
       } finally {
@@ -191,7 +206,7 @@ export const DashboardView = ({ onNavigate, onOpenLogin, onOpenRegister }) => {
           },
           {
             label: isCollegeRep ? 'Available Stock (Units)' : 'Tracked Institutions',
-            value: isCollegeRep ? stats.inventoryAvailable : stats.activeListings,
+            value: isCollegeRep ? stats.inventoryAvailable : (stats.trackedColleges || stats.activeListings),
             icon: isCollegeRep ? Computer : Building2,
             color: 'emerald',
             link: isCollegeRep ? 'Inventory' : 'College Verification',

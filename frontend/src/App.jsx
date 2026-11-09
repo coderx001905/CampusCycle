@@ -33,6 +33,7 @@ import { MyListingsView } from './pages/MyListingsView';
 import { MyRequestsView } from './pages/MyRequestsView';
 import { InventoryView } from './pages/InventoryView';
 import { TransfersView } from './pages/TransfersView';
+import { AnalyticsView } from './pages/AnalyticsView';
 import { CollegeVerificationView } from './components/admin/CollegeVerificationView';
 import { DisputeManagementView } from './components/admin/DisputeManagementView';
 import { CollegeSettingsView } from './components/settings/CollegeSettingsView';
@@ -499,7 +500,7 @@ export function App() {
             ) : activePage === 'Settings' && isCollegeRep ? (
               <CollegeSettingsView onShowToast={setToast} />
             ) : activePage === 'Analytics' ? (
-              <Analytics />
+              <AnalyticsView onNavigate={navigateTo} onShowToast={setToast} />
             ) : (
               <ModulePlaceholder
                 page={activePage}
@@ -507,177 +508,6 @@ export function App() {
               />
             )}
           </main>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// Preserve existing visual demonstration Analytics component per project rules
-function Analytics() {
-  const [period, setPeriod] = useState('This month');
-
-  const data = {
-    'This week': {
-      resources: 18,
-      donations: 8,
-      exchanges: 6,
-      enquiries: 4,
-      requests: 12,
-      completed: 9,
-      trend: [35, 55, 40, 75, 60, 90, 70],
-    },
-    'This month': {
-      resources: 128,
-      donations: 54,
-      exchanges: 46,
-      enquiries: 28,
-      requests: 86,
-      completed: 72,
-      trend: [35, 55, 45, 70, 60, 85, 75, 95, 65, 80, 90, 100],
-    },
-    'This year': {
-      resources: 842,
-      donations: 356,
-      exchanges: 301,
-      enquiries: 185,
-      requests: 624,
-      completed: 518,
-      trend: [30, 45, 40, 60, 55, 75, 65, 90, 80, 100, 85, 95],
-    },
-  };
-
-  const stats = data[period] || data['This month'];
-
-  const categories = [
-    { name: 'Books & study material', count: 42 },
-    { name: 'Electronics', count: 28 },
-    { name: 'Lab equipment', count: 22 },
-    { name: 'Stationery', count: 18 },
-    { name: 'Others', count: 18 },
-  ];
-
-  const totalCategoryCount = categories.reduce((sum, item) => sum + item.count, 0);
-
-  const metrics = [
-    {
-      label: 'Total resources',
-      value: stats.resources,
-      description: 'Resources listed',
-      color: 'text-ui-accent',
-    },
-    {
-      label: 'Donations',
-      value: stats.donations,
-      description: 'Resources shared for free',
-      color: 'text-ui-success-text',
-    },
-    {
-      label: 'Exchanges',
-      value: stats.exchanges,
-      description: 'Successful resource exchanges',
-      color: 'text-ui-accent',
-    },
-    {
-      label: 'Purchase enquiries',
-      value: stats.enquiries,
-      description: 'Enquiries submitted',
-      color: 'text-ui-warning-text',
-    },
-  ];
-
-  return (
-    <div className="space-y-7 animate-in fade-in duration-200">
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <p className="text-sm font-medium text-ui-accent">WORKSPACE / ANALYTICS</p>
-          <h1 className="mt-2 font-display text-3xl font-bold">Campus Analytics Overview</h1>
-          <p className="mt-2 text-text-secondary">
-            Demonstration analytics. Dedicated Phase 10 integration will generate real database reports.
-          </p>
-        </div>
-
-        <select
-          value={period}
-          onChange={(e) => setPeriod(e.target.value)}
-          className="rounded-xl border border-ui-border bg-ui-surface px-4 py-2.5 text-xs font-semibold"
-        >
-          <option>This week</option>
-          <option>This month</option>
-          <option>This year</option>
-        </select>
-      </div>
-
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        {metrics.map((metric) => (
-          <div key={metric.label} className="rounded-2xl border border-ui-border bg-ui-surface p-5">
-            <p className="text-xs font-semibold text-text-secondary">{metric.label}</p>
-            <p className={`mt-3 text-3xl font-bold ${metric.color}`}>{metric.value}</p>
-            <p className="mt-2 text-xs text-text-muted">{metric.description}</p>
-          </div>
-        ))}
-      </div>
-
-      <div className="grid gap-4 md:grid-cols-2">
-        <div className="rounded-2xl border border-ui-border bg-ui-surface p-6">
-          <h2 className="font-display text-base font-bold">Request Performance</h2>
-          <p className="mt-1 text-xs text-text-secondary">Requests submitted and completed</p>
-
-          <div className="mt-6 flex items-end gap-8">
-            <div>
-              <p className="text-3xl font-bold">{stats.requests}</p>
-              <p className="mt-1 text-xs text-text-muted">Total requests</p>
-            </div>
-            <div>
-              <p className="text-3xl font-bold text-ui-success-text">{stats.completed}</p>
-              <p className="mt-1 text-xs text-text-muted">Completed</p>
-            </div>
-          </div>
-
-          <div className="mt-6 h-3 overflow-hidden rounded-full bg-ui-subtle">
-            <div
-              className="h-full rounded-full bg-ui-success"
-              style={{
-                width: `${stats.requests > 0 ? (stats.completed / stats.requests) * 100 : 0}%`,
-              }}
-            />
-          </div>
-
-          <p className="mt-2 text-xs text-text-secondary">
-            {Math.round((stats.completed / stats.requests) * 100)}% completion rate
-          </p>
-        </div>
-
-        <div className="rounded-2xl border border-ui-border bg-ui-surface p-6">
-          <h2 className="font-display text-base font-bold">Transfer Performance</h2>
-          <p className="mt-1 text-xs text-text-secondary">Resource transfers completed</p>
-
-          <p className="mt-6 text-3xl font-bold">{Math.round(stats.completed * 0.8)}</p>
-          <p className="mt-1 text-xs text-text-secondary">Estimated completed transfers</p>
-        </div>
-      </div>
-
-      <div className="rounded-2xl border border-ui-border bg-ui-surface p-6">
-        <h2 className="font-display text-base font-bold">Resource Category Distribution</h2>
-        <div className="mt-6 space-y-4">
-          {categories.map((category) => {
-            const percentage = Math.round((category.count / totalCategoryCount) * 100);
-
-            return (
-              <div key={category.name}>
-                <div className="mb-1.5 flex justify-between gap-3 text-xs">
-                  <span className="font-medium">{category.name}</span>
-                  <span className="text-text-secondary">
-                    {category.count} ({percentage}%)
-                  </span>
-                </div>
-
-                <div className="h-2 overflow-hidden rounded-full bg-ui-subtle">
-                  <div className="h-full rounded-full bg-ui-accent" style={{ width: `${percentage}%` }} />
-                </div>
-              </div>
-            );
-          })}
         </div>
       </div>
     </div>

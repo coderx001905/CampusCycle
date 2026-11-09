@@ -187,6 +187,18 @@ Throughout all transfer operations, the invariant `quantity_available + quantity
 6. **Cancellation of unshipped batch:** Reserved quantity is released back to available (`quantity_available += qty, quantity_reserved -= qty`).
 7. **Parent Request Completion:** A request can only complete when all approved items are verified delivered in good condition and zero disputed inventory remains reserved. Neither `accept_report` nor `claim_rejected` with damaged/missing items allows parent request completion.
 
+## Phase 10 analytics endpoints
+
+Analytics endpoints compute real-time database aggregations without duplicating tables or creating schema migrations. Role-based scoping enforces data isolation: College Representatives receive metrics strictly scoped to their own college (`college_id`), while Platform Admin receives global totals across all institutions.
+
+| Method and path | Access | Description |
+|---|---|---|
+| `GET /api/v1/analytics/summary` | College Rep or Platform Admin | High-level summary KPIs (listings, requests, transfers, and for admin, registered colleges). |
+| `GET /api/v1/analytics/categories` | College Rep or Platform Admin | Resource counts, total stock, available quantity, and reserved quantity grouped by category. |
+| `GET /api/v1/analytics/requests` | College Rep or Platform Admin | Request status distribution, request types, and overall fulfillment rate percentage. |
+| `GET /api/v1/analytics/transfers` | College Rep or Platform Admin | Transfer status pipeline, dispute tracking, and physical inventory tallies (shipped, good, damaged, missing). |
+| `GET /api/v1/analytics/colleges` | Platform Admin only (403 for Reps) | Institution participation leaderboard: total colleges, verification breakdown, active listing counts, and completed transfer counts. |
+
 ## Alembic migrations
 
 Alembic is the authoritative schema creation/evolution mechanism. FastAPI startup does not call `create_all()`. The initial revision creates the approved schema; the follow-up removes inferred status defaults so the database does not impose defaults absent from the approved specification.

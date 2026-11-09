@@ -57,6 +57,8 @@ frontend/
 │   ├── api/                     # Backend API integration layer
 │   │   ├── client.js            # Central Axios instance with interceptors & CSRF handling
 │   │   ├── client.test.js       # Node test runner suite for API client
+│   │   ├── analytics.js         # Analytics endpoints (summary, categories, requests, transfers, colleges)
+│   │   ├── analytics.test.js    # Unit tests for analytics API client
 │   │   ├── auth.js              # Authentication endpoints (login, register, refresh, logout)
 │   │   ├── accounts.js          # College and user management endpoints
 │   │   ├── resources.js         # Listings, inventory, and image upload endpoints
@@ -81,7 +83,8 @@ frontend/
 │   ├── context/
 │   │   └── AuthContext.jsx      # Global authentication provider & session lifecycle
 │   ├── pages/                   # Application view modules
-│   │   ├── DashboardView.jsx    # Metrics and recent activity
+│   │   ├── DashboardView.jsx    # Live metrics, summary KPIs, and recent activity
+│   │   ├── AnalyticsView.jsx    # Real-time aggregated metrics, fulfillment, and logistics analytics
 │   │   ├── MarketplaceView.jsx  # Browse, search, filter, and request resources
 │   │   ├── MyListingsView.jsx   # Create and manage owned resource listings
 │   │   ├── MyRequestsView.jsx   # Sent & received requests, approvals, and cancellations
