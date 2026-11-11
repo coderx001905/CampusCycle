@@ -1,0 +1,67 @@
+{
+  "metadata": {
+    "source": "All India Survey on Higher Education (AISHE), Department of Higher Education, Ministry of Education, Government of India",
+    "dashboard_url": "https://dashboard.aishe.gov.in/hedirectory/#/hedirectory",
+    "dataset_catalog_url": "https://aikosh.indiaai.gov.in/home/datasets/details/all_universities_as_per_aishe_dashboard.html",
+    "retrieval_date": "2026-11-09",
+    "license": "Government Open Data Licence - India (GODL)",
+    "description": "Verified institution records for higher education institutions in Chennai, Tamil Nadu used for CampusCycle demonstration seeding."
+  },
+  "institutions": [
+    {
+      "aishe_code": "U-0439",
+      "name": "Anna University",
+      "institution_type": "State Public University",
+      "address": "Sardar Patel Road, Guindy",
+      "city": "Chennai",
+      "state": "Tamil Nadu",
+      "pincode": "600025",
+      "contact_email": "registrar@annauniv.edu",
+      "verification_status": "verified"
+    },
+    {
+      "aishe_code": "U-0456",
+      "name": "Indian Institute of Technology Madras",
+      "institution_type": "Institute of National Importance",
+      "address": "Sardar Patel Road, IIT P.O.",
+      "city": "Chennai",
+      "state": "Tamil Nadu",
+      "pincode": "600036",
+      "contact_email": "registrar@iitm.ac.in",
+      "verification_status": "verified"
+    },
+    {
+      "aishe_code": "U-0462",
+      "name": "University of Madras",
+      "institution_type": "State Public University",
+      "address": "Centenary Buildings, Kamarajar Salai, Chepauk",
+      "city": "Chennai",
+      "state": "Tamil Nadu",
+      "pincode": "600005",
+      "contact_email": "registrar@unom.ac.in",
+      "verification_status": "verified"
+    },
+    {
+      "aishe_code": "C-44006",
+      "name": "Loyola College",
+      "institution_type": "Affiliated Autonomous College",
+      "address": "Sterling Road, Nungambakkam",
+      "city": "Chennai",
+      "state": "Tamil Nadu",
+      "pincode": "600034",
+      "contact_email": "principal@loyolacollege.edu",
+      "verification_status": "verified"
+    },
+    {
+      "aishe_code": "C-43965",
+      "name": "Madras Christian College",
+      "institution_type": "Affiliated Autonomous College",
+      "address": "Velachery Main Road, East Tambaram",
+      "city": "Chennai",
+      "state": "Tamil Nadu",
+      "pincode": "600059",
+      "contact_email": "principal@mcc.edu.in",
+      "verification_status": "pending"
+    }
+  ]
+}

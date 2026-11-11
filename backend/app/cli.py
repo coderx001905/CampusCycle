@@ -73,9 +73,35 @@ def reset_admin_password() -> int:
     return 0
 
 
+def run_seed_demo() -> int:
+    db: Session = SessionLocal()
+    try:
+        from app.seeds.demo_seeder import seed_demo_data
+        seed_demo_data(db)
+        return 0
+    except Exception as exc:
+        print(f"Error seeding demo data: {exc}", file=sys.stderr)
+        return 1
+    finally:
+        db.close()
+
+
+def run_rollback_demo() -> int:
+    db: Session = SessionLocal()
+    try:
+        from app.seeds.demo_seeder import rollback_demo_data
+        rollback_demo_data(db)
+        return 0
+    except Exception as exc:
+        print(f"Error rolling back demo data: {exc}", file=sys.stderr)
+        return 1
+    finally:
+        db.close()
+
+
 def main() -> None:
     if len(sys.argv) < 2:
-        print("Usage: python -m app.cli [provision-admin | reset-admin-password]", file=sys.stderr)
+        print("Usage: python -m app.cli [provision-admin | reset-admin-password | seed-demo | rollback-demo]", file=sys.stderr)
         raise SystemExit(2)
     command = sys.argv[1]
     if command == "provision-admin":
@@ -88,9 +114,13 @@ def main() -> None:
             print("Usage: python -m app.cli reset-admin-password", file=sys.stderr)
             raise SystemExit(2)
         raise SystemExit(reset_admin_password())
+    elif command == "seed-demo":
+        raise SystemExit(run_seed_demo())
+    elif command == "rollback-demo":
+        raise SystemExit(run_rollback_demo())
     else:
         print(f"Unknown command: {command}", file=sys.stderr)
-        print("Usage: python -m app.cli [provision-admin | reset-admin-password]", file=sys.stderr)
+        print("Usage: python -m app.cli [provision-admin | reset-admin-password | seed-demo | rollback-demo]", file=sys.stderr)
         raise SystemExit(2)
 
 

@@ -1,0 +1,345 @@
+{
+  "seeded_at": "2026-11-09T13:47:52.004686+00:00",
+  "summary": {
+    "colleges": 5,
+    "users": 11,
+    "resources": 18,
+    "requests": 14,
+    "transfers": 4,
+    "transfer_history": 13
+  },
+  "records": {
+    "colleges": [
+      {
+        "id": 1,
+        "name": "Anna University"
+      },
+      {
+        "id": 2,
+        "name": "Indian Institute of Technology Madras"
+      },
+      {
+        "id": 3,
+        "name": "University of Madras"
+      },
+      {
+        "id": 4,
+        "name": "Loyola College"
+      },
+      {
+        "id": 5,
+        "name": "Madras Christian College"
+      }
+    ],
+    "users": [
+      {
+        "id": 1,
+        "email": "admin@example.edu",
+        "role": "platform_admin"
+      },
+      {
+        "id": 2,
+        "email": "rep.anna@example.edu",
+        "role": "college_representative"
+      },
+      {
+        "id": 3,
+        "email": "priya.sundaram@example.edu",
+        "role": "college_representative"
+      },
+      {
+        "id": 4,
+        "email": "rep.iitm@example.edu",
+        "role": "college_representative"
+      },
+      {
+        "id": 5,
+        "email": "anand.venkatesh@example.edu",
+        "role": "college_representative"
+      },
+      {
+        "id": 6,
+        "email": "rep.unom@example.edu",
+        "role": "college_representative"
+      },
+      {
+        "id": 7,
+        "email": "karthik.balaji@example.edu",
+        "role": "college_representative"
+      },
+      {
+        "id": 8,
+        "email": "rep.loyola@example.edu",
+        "role": "college_representative"
+      },
+      {
+        "id": 9,
+        "email": "deepa.natarajan@example.edu",
+        "role": "college_representative"
+      },
+      {
+        "id": 10,
+        "email": "rajesh.kannan@example.edu",
+        "role": "college_representative"
+      },
+      {
+        "id": 11,
+        "email": "rep.mcc@example.edu",
+        "role": "college_representative"
+      }
+    ],
+    "resources": [
+      {
+        "id": 1,
+        "name": "Introduction to Algorithms (CLRS) 4th Edition",
+        "college_id": 1
+      },
+      {
+        "id": 2,
+        "name": "Digital Storage Oscilloscope 100MHz (Rigol DS1054Z)",
+        "college_id": 1
+      },
+      {
+        "id": 3,
+        "name": "Texas Instruments TI-84 Plus CE Graphing Calculators",
+        "college_id": 1
+      },
+      {
+        "id": 4,
+        "name": "Microcontroller Development Kits (STM32 Nucleo-64)",
+        "college_id": 1
+      },
+      {
+        "id": 5,
+        "name": "Fluid Mechanics & Hydraulic Machinery Reference Collection",
+        "college_id": 1
+      },
+      {
+        "id": 6,
+        "name": "Raspberry Pi 4 Model B (4GB RAM) Lab Bundles",
+        "college_id": 2
+      },
+      {
+        "id": 7,
+        "name": "Pattern Recognition and Machine Learning (Bishop)",
+        "college_id": 2
+      },
+      {
+        "id": 8,
+        "name": "Optical Microscopes with LED Illumination (Binocular)",
+        "college_id": 2
+      },
+      {
+        "id": 9,
+        "name": "FPGA Development Boards (Xilinx Spartan-7)",
+        "college_id": 2
+      },
+      {
+        "id": 10,
+        "name": "Mechanical Workshop Precision Calipers & Micrometers",
+        "college_id": 2
+      },
+      {
+        "id": 11,
+        "name": "Organic Chemistry (Clayden, Greeves, Warren) 2nd Edition",
+        "college_id": 3
+      },
+      {
+        "id": 12,
+        "name": "Spectrophotometer Cuvettes & Calibration Standards",
+        "college_id": 3
+      },
+      {
+        "id": 13,
+        "name": "Advanced Data Structures & Algorithms Problem Sets",
+        "college_id": 3
+      },
+      {
+        "id": 14,
+        "name": "Arduino Starter Component Sets with Sensors & Breadboards",
+        "college_id": 3
+      },
+      {
+        "id": 15,
+        "name": "General Biology Prepared Microscope Slides Set",
+        "college_id": 4
+      },
+      {
+        "id": 16,
+        "name": "Statistics for Business and Economics (Anderson, Sweeney)",
+        "college_id": 4
+      },
+      {
+        "id": 17,
+        "name": "Electronic Circuit Breadboards & Digital Multimeters",
+        "college_id": 4
+      },
+      {
+        "id": 18,
+        "name": "A3 Technical Drawing Boards & Drafting Scales",
+        "college_id": 4
+      }
+    ],
+    "requests": [
+      {
+        "id": 1,
+        "key": "req_clrs_pending",
+        "status": "pending"
+      },
+      {
+        "id": 2,
+        "key": "req_clrs_approved",
+        "status": "approved"
+      },
+      {
+        "id": 3,
+        "key": "req_calc_partial",
+        "status": "approved"
+      },
+      {
+        "id": 4,
+        "key": "req_micro_rejected",
+        "status": "rejected"
+      },
+      {
+        "id": 5,
+        "key": "req_rpi_exchange_pending",
+        "status": "pending"
+      },
+      {
+        "id": 6,
+        "key": "req_rpi_exchange_approved",
+        "status": "approved"
+      },
+      {
+        "id": 7,
+        "key": "req_stm32_purchase_pending",
+        "status": "pending"
+      },
+      {
+        "id": 8,
+        "key": "req_fpga_purchase_approved",
+        "status": "approved"
+      },
+      {
+        "id": 9,
+        "key": "req_slides_in_progress",
+        "status": "in_progress"
+      },
+      {
+        "id": 10,
+        "key": "req_prml_completed",
+        "status": "completed"
+      },
+      {
+        "id": 11,
+        "key": "req_calipers_disputed",
+        "status": "awaiting_resolution"
+      },
+      {
+        "id": 12,
+        "key": "req_clayden_resolved",
+        "status": "completed"
+      },
+      {
+        "id": 13,
+        "key": "req_dsa_cancelled",
+        "status": "cancelled"
+      },
+      {
+        "id": 14,
+        "key": "req_cuvettes_canc_rejected",
+        "status": "approved"
+      }
+    ],
+    "transfers": [
+      {
+        "id": 1,
+        "key": "tr_slides_dispatched",
+        "status": "dispatched"
+      },
+      {
+        "id": 2,
+        "key": "tr_prml_completed",
+        "status": "completed"
+      },
+      {
+        "id": 3,
+        "key": "tr_calipers_disputed",
+        "status": "disputed"
+      },
+      {
+        "id": 4,
+        "key": "tr_clayden_resolved",
+        "status": "completed"
+      }
+    ],
+    "transfer_history": [
+      {
+        "id": 1,
+        "transfer_id": 1,
+        "status": "preparing"
+      },
+      {
+        "id": 2,
+        "transfer_id": 1,
+        "status": "dispatched"
+      },
+      {
+        "id": 3,
+        "transfer_id": 2,
+        "status": "preparing"
+      },
+      {
+        "id": 4,
+        "transfer_id": 2,
+        "status": "dispatched"
+      },
+      {
+        "id": 5,
+        "transfer_id": 2,
+        "status": "received"
+      },
+      {
+        "id": 6,
+        "transfer_id": 2,
+        "status": "completed"
+      },
+      {
+        "id": 7,
+        "transfer_id": 3,
+        "status": "preparing"
+      },
+      {
+        "id": 8,
+        "transfer_id": 3,
+        "status": "dispatched"
+      },
+      {
+        "id": 9,
+        "transfer_id": 3,
+        "status": "disputed"
+      },
+      {
+        "id": 10,
+        "transfer_id": 4,
+        "status": "preparing"
+      },
+      {
+        "id": 11,
+        "transfer_id": 4,
+        "status": "dispatched"
+      },
+      {
+        "id": 12,
+        "transfer_id": 4,
+        "status": "disputed"
+      },
+      {
+        "id": 13,
+        "transfer_id": 4,
+        "status": "completed"
+      }
+    ]
+  }
+}

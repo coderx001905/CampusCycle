@@ -40,3 +40,6 @@ Thumbs.db
 
 # Local AI development skills
 .agents/
+
+# Demonstration credentials
+DEMO_ACCOUNTS.md
